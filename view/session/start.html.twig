@@ -1,0 +1,161 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Începe sesiunea | Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" href="/css/session-start.css">
+{% endblock %}
+
+{% block body %}
+    {% include 'partials/_navbar.html.twig' %}
+
+    <main
+        class="container-fluid px-3 px-lg-4 py-4"
+        data-save-session-url="{{ path('app_session_save') }}"
+        data-sessions-index-url="{{ path('app_sessions_index') }}"
+    >
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h4 mb-1">Începe sesiunea</h1>
+                <p class="mb-0 text-secondary">Selectați pacientul și organele pentru examinare.</p>
+            </div>
+            <div class="d-flex justify-content-end mt-3" data-form-actions hidden>
+                <button class="btn btn-success" type="button" data-show-examination-form>START USG</button>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ path('app_home') }}">Înapoi</a>
+        </div>
+
+        <div class="session-layout">
+            <section
+                id="sesion_user_info"
+                class="session-panel"
+                data-patient-search
+                data-patient-search-url="{{ path('app_session_patient_by_idnp') }}"
+                data-patient-name-search-url="{{ path('app_session_patients_search') }}"
+                data-new-patient-url="{{ path('app_patients_new') }}"
+            >
+                <div class="session-panel-header">
+                    <h2 class="h5 mb-0">Pacient</h2>
+                </div>
+                <div class="session-panel-body">
+                    <label class="form-label" for="session_idnp">IDNP</label>
+                    <input
+                        class="form-control"
+                        id="session_idnp"
+                        type="text"
+                        inputmode="numeric"
+                        maxlength="13"
+                        autocomplete="off"
+                        placeholder="13 cifre"
+                        data-idnp-input
+                    >
+                    <div class="form-text" data-idnp-message>Introduceți IDNP pentru căutare.</div>
+
+                    <div class="border-top mt-3 pt-3">
+                        <label class="form-label" for="session_patient_name">Nume / prenume</label>
+                        <input
+                            class="form-control"
+                            id="session_patient_name"
+                            type="search"
+                            autocomplete="off"
+                            placeholder="Căutați pacientul"
+                            data-patient-name-input
+                        >
+                        <div class="form-text" data-patient-name-message>Introduceți cel puțin 2 caractere.</div>
+                        <div class="list-group patient-search-results mt-2" data-patient-name-results hidden></div>
+                    </div>
+                    <br>
+                    <div class="form-check">
+                        <input data-patient-incognito class="form-check-input" type="checkbox" value="" id="flexCheckDefault">
+                        <label class="form-check-label" for="flexCheckDefault">
+                            Pacient incognito
+                        </label>
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary mt-2" href="{{ path('app_patients_new') }}" data-add-patient-link hidden>Adăugați pacient nou</a>
+
+                    <div class="patient-summary" data-patient-summary hidden>
+                        <h3 class="h6 mb-3">Date pacient</h3>
+                        <dl>
+                            <dt>Nume</dt>
+                            <dd data-patient-field="fullName"></dd>
+                            <dt>Sex</dt>
+                            <dd data-patient-field="gender"></dd>
+                            <dt>Anul nașterii</dt>
+                            <dd data-patient-field="birthYear"></dd>
+                            <dt>Telefon</dt>
+                            <dd data-patient-field="phone"></dd>
+                            <dt>IDNP</dt>
+                            <dd data-patient-field="idnp"></dd>
+                            <dt>Seria</dt>
+                            <dd data-patient-field="seria"></dd>
+                            <dt>Raion</dt>
+                            <dd data-patient-field="district"></dd>
+                            <dt>Localitatea</dt>
+                            <dd data-patient-field="city"></dd>
+                            <dt>Adresă</dt>
+                            <dd data-patient-field="address"></dd>
+                            <dt>Înlesniri</dt>
+                            <dd data-patient-field="beneficiary"></dd>
+                        </dl>
+                    </div>
+                </div>
+            </section>
+
+            <section id="image_section_image" class="session-panel">
+                <div class="session-panel-header">
+                    <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
+                        <div>
+                            <h2 class="h5 mb-1">Organe pentru examinare</h2>
+                            <p class="mb-0 text-secondary">Organe selectate: <span data-selected-count>0</span></p>
+                        </div>
+                        <div class="selected-organs" data-selected-organs>
+                            <span class="text-secondary">Niciun organ selectat.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="session-panel-body">
+                    {% if organs is empty %}
+                        <p class="mb-0 text-secondary">Nu există organe adăugate.</p>
+                    {% else %}
+                        <div class="organ-grid" data-organ-grid>
+                            {% for organ in organs %}
+                                <button
+                                    class="organ-card"
+                                    type="button"
+                                    aria-pressed="false"
+                                    aria-label="{{ organ.name }}"
+                                    data-organ-card
+                                    data-organ-id="{{ organ.id }}"
+                                    data-organ-name="{{ organ.name }}"
+                                    data-organ-paired="{{ organ.paired ? '1' : '0' }}"
+                                    data-organ-image-path="{{ organ.imagePath ?: '' }}"
+                                    data-organ-parameters="{{ organ.parameters|json_encode|e('html_attr') }}"
+                                >
+                                    {% if organ.imagePath %}
+                                        <img class="organ-image" src="{{ organ.imagePath }}" alt="{{ organ.name }}">
+                                    {% else %}
+                                        <span class="organ-placeholder" aria-hidden="true"></span>
+                                    {% endif %}
+                                </button>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </section>
+        </div>
+
+
+
+        <section class="session-panel mt-4" data-examination-form hidden>
+            <div class="session-panel-header">
+                <h2 class="h5 mb-0">Formular examinare</h2>
+            </div>
+            <div class="session-panel-body" data-examination-form-content></div>
+        </section>
+    </main>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="/js/session-start.js"></script>
+{% endblock %}

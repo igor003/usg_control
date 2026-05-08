@@ -1,0 +1,313 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Lista sesiunilor | Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .navbar-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+
+        .sessions-table {
+            table-layout: fixed;
+            width: 100%;
+            font-size: .88rem;
+            line-height: 1.25;
+        }
+
+        .sessions-table th,
+        .sessions-table td {
+            padding: .38rem .45rem;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+
+        .sessions-table .filter-row th {
+            padding-top: .25rem;
+            padding-bottom: .5rem;
+            vertical-align: top;
+        }
+
+        .sessions-table .filter-row .form-control {
+            width: 100%;
+            min-width: 0;
+            padding: .22rem .34rem;
+            font-size: .82rem;
+        }
+
+        .sessions-table th:nth-child(1),
+        .sessions-table td:nth-child(1) {
+            width: 6%;
+        }
+
+        .sessions-table th:nth-child(2),
+        .sessions-table td:nth-child(2) {
+            width: 10%;
+        }
+
+        .sessions-table th:nth-child(3),
+        .sessions-table td:nth-child(3) {
+            width: 8%;
+        }
+
+        .sessions-table th:nth-child(4),
+        .sessions-table td:nth-child(4) {
+            width: 8%;
+        }
+
+        .sessions-table th:nth-child(5),
+        .sessions-table td:nth-child(5) {
+            width: 12%;
+        }
+
+        .sessions-table th:nth-child(6),
+        .sessions-table td:nth-child(6) {
+            width: 18%;
+        }
+
+        .sessions-table th:nth-child(7),
+        .sessions-table td:nth-child(7) {
+            width: 10%;
+        }
+
+        .sessions-table th:nth-child(8),
+        .sessions-table td:nth-child(8) {
+            width: 9%;
+        }
+
+        .sessions-table th:nth-child(9),
+        .sessions-table td:nth-child(9) {
+            width: 4%;
+        }
+
+        .session-actions {
+            display: flex;
+            flex-direction: column;
+            gap: .35rem;
+            align-items: stretch;
+        }
+
+        .session-actions .btn {
+            padding-right: .35rem;
+            padding-left: .35rem;
+        }
+
+        .session-organs-preview {
+            max-height: 3.8rem;
+            overflow: hidden;
+        }
+
+        .session-text-preview {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    {% include 'partials/_navbar.html.twig' %}
+
+    <main class="container-fluid px-2 px-xl-3 py-4">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h4 mb-1">Lista sesiunilor</h1>
+                <p class="mb-0 text-secondary">Căutați și filtrați sesiunile după orice coloană.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-secondary" href="{{ path('app_home') }}">Înapoi</a>
+                <a class="btn btn-primary" href="{{ path('app_session_start') }}">Sesiune nouă</a>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-2 p-lg-3">
+                {% if createdSessionId %}
+                    <div class="alert alert-success d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2" role="alert">
+                        <span>Sesiunea a fost salvată cu succes.</span>
+                        {% if printSessionId %}
+                            <a class="btn btn-sm btn-outline-success" href="{{ path('app_session_print', { id: printSessionId }) }}" target="_blank" rel="noopener">Deschide formular A4</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if sessions is empty %}
+                    <p class="mb-0 text-secondary">Nu există sesiuni salvate.</p>
+                {% else %}
+                    <div class="row g-3 align-items-end mb-3">
+                        <div class="col-12 col-lg-5">
+                            <label class="form-label" for="sessions_global_filter">Căutare generală</label>
+                            <input class="form-control" id="sessions_global_filter" type="search" placeholder="Căutați în toate câmpurile" data-session-table-global>
+                        </div>
+                        <div class="col-12 col-lg-auto">
+                            <div class="text-secondary" data-session-table-count></div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0 sessions-table" data-session-table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Pacient</th>
+                                    <th>IDNP</th>
+                                    <th>Telefon</th>
+                                    <th>Localitatea</th>
+                                    <th>Organe</th>
+                                    <th>Notă</th>
+                                    <th>Concluzie</th>
+                                    <th>Acțiuni</th>
+                                </tr>
+                                <tr class="filter-row">
+                                    <th><input class="form-control" type="search" aria-label="Filtru după dată" data-session-table-filter data-column="0"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după pacient" data-session-table-filter data-column="1"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după IDNP" data-session-table-filter data-column="2"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după telefon" data-session-table-filter data-column="3"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după localitate" data-session-table-filter data-column="4"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după organe" data-session-table-filter data-column="5"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după notă" data-session-table-filter data-column="6"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după concluzie" data-session-table-filter data-column="7"></th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                    {% set patient = session.patient %}
+                                    {% set city = patient ? patient.city : null %}
+                                    {% set district = city ? city.district : null %}
+                                    {% set organLabels = [] %}
+                                    {% for sessionOrgan in session.sessionOrgans %}
+                                        {% set sideLabel = sessionOrgan.side == 'right' ? 'Dreapta' : (sessionOrgan.side == 'left' ? 'Stânga' : '') %}
+                                        {% set organLabels = organLabels|merge([sessionOrgan.organName ~ (sideLabel ? ' - ' ~ sideLabel : '')]) %}
+                                    {% endfor %}
+                                    <tr data-session-row>
+                                        <td data-filter-value="{{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : '' }}">
+                                            {{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : '-' }}
+                                        </td>
+                                        <td data-filter-value="{{ patient ? patient.lastName ~ ' ' ~ patient.firstName : 'Pacient incognito' }}">
+                                            {% if patient %}
+                                                <div class="fw-semibold">{{ patient.lastName }} {{ patient.firstName }}</div>
+                                            {% else %}
+                                                <span class="text-secondary">Pacient incognito</span>
+                                            {% endif %}
+                                        </td>
+                                        <td data-filter-value="{{ patient and patient.idnp ? patient.idnp : '' }}">{{ patient and patient.idnp ? patient.idnp : '-' }}</td>
+                                        <td data-filter-value="{{ patient and patient.phone ? patient.phone : '' }}">{{ patient and patient.phone ? patient.phone : '-' }}</td>
+                                        <td data-filter-value="{{ city ? city.name ~ ' ' ~ (district ? district.name : '') : '' }}">
+                                            {% if city %}
+                                                {{ city.name }}{% if district %}, {{ district.name }}{% endif %}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        <td data-filter-value="{{ organLabels|join(' ') }}">
+                                            <div class="session-organs-preview">{{ organLabels|join(', ') ?: '-' }}</div>
+                                        </td>
+                                        <td data-filter-value="{{ session.sessionNote ?: '' }}">
+                                            <div class="session-text-preview">{{ session.sessionNote ?: '-' }}</div>
+                                        </td>
+                                        <td data-filter-value="{{ session.sessionConclusion ?: '' }}">
+                                            <div class="session-text-preview">{{ session.sessionConclusion ?: '-' }}</div>
+                                        </td>
+                                        <td data-filter-value="">
+                                            <div class="session-actions">
+                                                <a class="btn btn-sm btn-outline-primary" href="{{ path('app_sessions_show', { id: session.id }) }}">Vezi</a>
+                                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_session_print', { id: session.id }) }}" target="_blank" rel="noopener">A4</a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                                <tr data-session-table-empty hidden>
+                                    <td class="text-center text-secondary py-4" colspan="9">Nu au fost găsite sesiuni pentru filtrele selectate.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        document.querySelectorAll('[data-session-table]').forEach((table) => {
+            const globalFilter = document.querySelector('[data-session-table-global]');
+            const filters = Array.from(document.querySelectorAll('[data-session-table-filter]'));
+            const rows = Array.from(table.querySelectorAll('[data-session-row]'));
+            const emptyRow = table.querySelector('[data-session-table-empty]');
+            const count = document.querySelector('[data-session-table-count]');
+
+            const normalizeValue = (value) => value
+                .toString()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[șş]/g, 's')
+                .replace(/[țţ]/g, 't')
+                .toLowerCase()
+                .trim();
+
+            const getCellValue = (row, column) => {
+                const cell = row.querySelectorAll('[data-filter-value]')[column];
+
+                return cell ? cell.dataset.filterValue : '';
+            };
+
+            const updateCount = (visible) => {
+                if (count) {
+                    count.textContent = `${visible} din ${rows.length} sesiuni`;
+                }
+            };
+
+            const applyFilters = () => {
+                const globalTerm = normalizeValue(globalFilter ? globalFilter.value : '');
+                let visible = 0;
+
+                rows.forEach((row) => {
+                    const rowText = normalizeValue(
+                        Array.from(row.querySelectorAll('[data-filter-value]'))
+                            .map((cell) => cell.dataset.filterValue)
+                            .join(' ')
+                    );
+                    const matchesGlobal = globalTerm === '' || rowText.includes(globalTerm);
+                    const matchesColumns = filters.every((filter) => {
+                        const term = normalizeValue(filter.value);
+
+                        if (term === '') {
+                            return true;
+                        }
+
+                        return normalizeValue(getCellValue(row, Number(filter.dataset.column))).includes(term);
+                    });
+                    const isVisible = matchesGlobal && matchesColumns;
+
+                    row.hidden = !isVisible;
+
+                    if (isVisible) {
+                        visible += 1;
+                    }
+                });
+
+                if (emptyRow) {
+                    emptyRow.hidden = visible !== 0;
+                }
+
+                updateCount(visible);
+            };
+
+            if (globalFilter) {
+                globalFilter.addEventListener('input', applyFilters);
+            }
+
+            filters.forEach((filter) => {
+                filter.addEventListener('input', applyFilters);
+                filter.addEventListener('change', applyFilters);
+            });
+
+            applyFilters();
+        });
+    </script>
+{% endblock %}

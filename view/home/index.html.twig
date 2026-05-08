@@ -1,0 +1,161 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        body {
+            position: relative;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: url('/images/cristela_nord_logo.jpg');
+            background-position: center bottom;
+            background-repeat: no-repeat;
+            background-size: min(81vw, 784px) auto;
+            opacity: .96;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .navbar-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+
+        .dashboard-heading {
+            max-width: 720px;
+        }
+
+        .dashboard-actions {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+            justify-items: stretch;
+        }
+
+        .dashboard-actions .dashboard-action:only-child {
+            grid-column: 2;
+        }
+
+        .dashboard-action {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            min-height: 100px;
+            padding: 1.5rem;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--bs-body-color);
+            text-align: center;
+            text-decoration: none;
+            box-shadow: 0 .125rem .25rem rgba(0, 0, 0, .05);
+            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+        }
+
+        .dashboard-action:hover,
+        .dashboard-action:focus {
+            border-color: var(--bs-primary);
+            color: var(--bs-body-color);
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .08);
+            transform: translateY(-1px);
+        }
+
+        .dashboard-action:disabled {
+            cursor: not-allowed;
+            opacity: .72;
+            transform: none;
+        }
+
+        .dashboard-action-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 56px;
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            background: var(--bs-primary-bg-subtle);
+            color: var(--bs-primary);
+        }
+
+        .dashboard-action-icon svg {
+            width: 30px;
+            height: 30px;
+        }
+
+        @media (max-width: 991.98px) {
+            .dashboard-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard-actions .dashboard-action:only-child {
+                grid-column: 1;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    {% include 'partials/_navbar.html.twig' %}
+
+    <main class="container py-5">
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success" role="alert">{{ message }}</div>
+        {% endfor %}
+
+
+        <div class="dashboard-actions text-center">
+            <a class="dashboard-action" href="{{ path('app_session_start') }}">
+                <span class="dashboard-action-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polygon points="10 8 16 12 10 16 10 8"></polygon>
+                    </svg>
+                </span>
+                <span>
+                    <span class="d-block h5 mb-1">EXAMINARE NOUĂ</span>
+                    <span class="d-block text-secondary">Începe o sesiune USG nouă</span>
+                </span>
+            </a>
+
+{#            <a class="dashboard-action" href="{{ path('app_patients_index') }}">#}
+{#                <span class="dashboard-action-icon" aria-hidden="true">#}
+{#                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">#}
+{#                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>#}
+{#                        <circle cx="9" cy="7" r="4"></circle>#}
+{#                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>#}
+{#                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>#}
+{#                    </svg>#}
+{#                </span>#}
+{#                <span>#}
+{#                    <span class="d-block h5 mb-1">Pacienti</span>#}
+{#                    <span class="d-block text-secondary">Adaugati nou, Gestionați pacienții existenți.</span>#}
+{#                </span>#}
+{#            </a>#}
+
+{#            <a class="dashboard-action" href="{{ path('app_report_index') }}">#}
+{#                <span class="dashboard-action-icon" aria-hidden="true">#}
+{#                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">#}
+{#                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>#}
+{#                        <path d="M14 2v6h6"></path>#}
+{#                        <path d="M16 13H8"></path>#}
+{#                        <path d="M16 17H8"></path>#}
+{#                        <path d="M10 9H8"></path>#}
+{#                    </svg>#}
+{#                </span>#}
+{#                <span>#}
+{#                    <span class="d-block h5 mb-1">Raport</span>#}
+{#                    <span class="d-block text-secondary">Consultați examinările salvate.</span>#}
+{#                </span>#}
+{#            </a>#}
+        </div>
+    </main>
+{% endblock %}

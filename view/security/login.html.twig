@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login | Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .login-logo {
+            width: 182px;
+            height: 182px;
+            object-fit: contain;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    <main class="container min-vh-100 d-flex align-items-center justify-content-center py-5">
+        <div class="card shadow-sm border-0 w-100" style="max-width: 420px;">
+            <div class="card-body p-4 p-sm-5">
+                <div class="text-center mb-4">
+                    <img class="login-logo mb-3" src="/images/cristela_nord_logo.jpg" alt="Cristela Nord">
+                    <h1 class="h3 mb-2">Sign in</h1>
+                    <p class="text-secondary mb-0">Ultrasound Examination</p>
+                </div>
+
+                {% if has_error %}
+                    <div class="alert alert-danger" role="alert">Invalid login or password.</div>
+                {% endif %}
+
+                <form method="post" action="{{ path('app_login') }}">
+                    <div class="mb-3">
+                        <label class="form-label" for="username">Login</label>
+                        <input class="form-control form-control-lg" id="username" type="text" name="_username" value="{{ last_username }}" autocomplete="username" required autofocus>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="password">Password</label>
+                        <input class="form-control form-control-lg" id="password" type="password" name="_password" autocomplete="current-password" required>
+                    </div>
+
+                    <button class="btn btn-primary btn-lg w-100" type="submit">Log in</button>
+                </form>
+            </div>
+        </div>
+    </main>
+{% endblock %}

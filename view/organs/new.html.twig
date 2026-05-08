@@ -1,0 +1,138 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ page_title }} | Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .navbar-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+
+        .organ-preview {
+            width: 120px;
+            height: 120px;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 8px;
+            background: var(--bs-tertiary-bg);
+            object-fit: contain;
+            padding: .5rem;
+        }
+
+        .organ-table-image {
+            width: 64px;
+            height: 64px;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 8px;
+            background: var(--bs-tertiary-bg);
+            object-fit: contain;
+            padding: .35rem;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    {% include 'partials/_navbar.html.twig' %}
+
+    <main class="container py-5">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h4 mb-1">{{ page_title }}</h1>
+                <p class="mb-0 text-secondary">{{ page_description }}</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ path('app_home') }}">Înapoi</a>
+        </div>
+
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success" role="alert">{{ message }}</div>
+        {% endfor %}
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-sm-5">
+                {{ form_start(form, { attr: { novalidate: 'novalidate' } }) }}
+                    {{ form_errors(form) }}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form_row(form.name) }}
+                        </div>
+                        <div class="col-md-3">
+                            {{ form_row(form.sortOrder) }}
+                        </div>
+                        <div class="col-md-3 d-flex align-items-center pt-md-4">
+                            {{ form_row(form.paried) }}
+                        </div>
+                        <div class="col-md-8">
+                            {{ form_row(form.imageFile) }}
+                        </div>
+                        <div class="col-md-4">
+                            {% if current_image_path %}
+                                <div class="mb-2 text-secondary">Imagine curentă</div>
+                                <img class="organ-preview" src="/{{ current_image_path|trim('/') }}" alt="Imagine organ">
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a class="btn btn-outline-secondary" href="{{ path('app_organs_new') }}">Anulează</a>
+                        {{ form_widget(form.save) }}
+                    </div>
+                {{ form_end(form) }}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                    <div>
+                        <h2 class="h5 mb-1">Organe adăugate</h2>
+                        <p class="mb-0 text-secondary">Lista organelor existente și imaginile lor.</p>
+                    </div>
+                    <a class="btn btn-outline-primary" href="{{ path('app_organs_new') }}">Organ nou</a>
+                </div>
+
+                {% if organs is empty %}
+                    <p class="mb-0 text-secondary">Nu există organe adăugate.</p>
+                {% else %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Imagine</th>
+                                    <th>Nr. ord</th>
+                                    <th>Denumire</th>
+                                    <th>Organ pereche</th>
+                                    <th>Creat la</th>
+                                    <th>Actualizat la</th>
+                                    <th class="text-end">Acțiuni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for organ in organs %}
+                                    <tr{% if editing_organ_id == organ.id %} class="table-primary"{% endif %}>
+                                        <td>
+                                            {% if organ.imagePath %}
+                                                <img class="organ-table-image" src="/{{ organ.imagePath|trim('/') }}" alt="{{ organ.name }}">
+                                            {% else %}
+                                                <span class="text-secondary">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ organ.sortOrder }}</td>
+                                        <td class="fw-semibold">{{ organ.name }}</td>
+                                        <td>{{ organ.paried ? 'Da' : 'Nu' }}</td>
+                                        <td>{{ organ.createdAt ? organ.createdAt|date('d.m.Y H:i') : '-' }}</td>
+                                        <td>{{ organ.updatedAt ? organ.updatedAt|date('d.m.Y H:i') : '-' }}</td>
+                                        <td class="text-end">
+                                            <a class="btn btn-sm btn-outline-primary" href="{{ path('app_organs_edit', { id: organ.id }) }}">Editează</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+{% endblock %}

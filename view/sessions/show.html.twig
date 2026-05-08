@@ -1,0 +1,224 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rezultatele sesiunii | Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .navbar-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+
+        .session-header-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: .75rem;
+        }
+
+        .session-info-box {
+            border: 1px solid rgba(0, 0, 0, .08);
+            border-radius: 8px;
+            padding: .75rem;
+            background: #fff;
+        }
+
+        .session-info-label {
+            display: block;
+            margin-bottom: .18rem;
+            color: #6c757d;
+            font-size: .78rem;
+        }
+
+        .result-section {
+            border: 1px solid rgba(0, 0, 0, .08);
+            border-radius: 8px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .result-section-header {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .85rem 1rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid rgba(0, 0, 0, .08);
+        }
+
+        .organ-icon {
+            width: 54px;
+            height: 54px;
+            flex: 0 0 54px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #fff;
+            border: 1px solid rgba(0, 0, 0, .08);
+            padding: .25rem;
+        }
+
+        .organ-icon-placeholder {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-weight: 700;
+        }
+
+        .organ-title {
+            margin: 0;
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #12395b;
+        }
+
+        .result-table {
+            font-size: .92rem;
+        }
+
+        .result-table th,
+        .result-table td {
+            vertical-align: middle;
+        }
+
+        .note-block {
+            white-space: pre-wrap;
+        }
+
+        @media (max-width: 991.98px) {
+            .session-header-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .session-header-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    {% include 'partials/_navbar.html.twig' %}
+
+    {% set patient = session.patient %}
+    {% set city = patient ? patient.city : null %}
+    {% set district = city ? city.district : null %}
+
+    <main class="container py-4">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h4 mb-1">Rezultatele sesiunii</h1>
+                <p class="mb-0 text-secondary">
+                    {{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : 'Data nu este disponibilă' }}
+                </p>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-secondary" href="{{ path('app_sessions_index') }}">Înapoi la sesiuni</a>
+                <a class="btn btn-outline-primary" href="{{ path('app_session_print', { id: session.id }) }}" target="_blank" rel="noopener">Formular A4</a>
+                <a class="btn btn-primary" href="{{ path('app_session_start') }}">Sesiune nouă</a>
+            </div>
+        </div>
+
+        <div class="session-header-grid mb-4">
+            <div class="session-info-box">
+                <span class="session-info-label">Pacient</span>
+                <strong>{{ patient ? patient.lastName ~ ' ' ~ patient.firstName : 'Pacient incognito' }}</strong>
+            </div>
+            <div class="session-info-box">
+                <span class="session-info-label">IDNP</span>
+                <strong>{{ patient and patient.idnp ? patient.idnp : '-' }}</strong>
+            </div>
+            <div class="session-info-box">
+                <span class="session-info-label">Telefon</span>
+                <strong>{{ patient and patient.phone ? patient.phone : '-' }}</strong>
+            </div>
+            <div class="session-info-box">
+                <span class="session-info-label">Localitatea</span>
+                <strong>
+                    {% if city %}
+                        {{ city.name }}{% if district %}, {{ district.name }}{% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </strong>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-lg-6">
+                <div class="session-info-box h-100">
+                    <span class="session-info-label">Notă sesiune</span>
+                    <div class="note-block">{{ session.sessionNote ?: '-' }}</div>
+                </div>
+            </div>
+            <div class="col-12 col-lg-6">
+                <div class="session-info-box h-100">
+                    <span class="session-info-label">Concluzie sesiune</span>
+                    <div class="note-block">{{ session.sessionConclusion ?: '-' }}</div>
+                </div>
+            </div>
+        </div>
+
+        {% if session.sessionOrgans is empty %}
+            <div class="alert alert-secondary">Nu există rezultate pentru această sesiune.</div>
+        {% else %}
+            <div class="d-flex flex-column gap-3">
+                {% for sessionOrgan in session.sessionOrgans %}
+                    {% set sideLabel = sessionOrgan.side == 'right' ? 'Dreapta' : (sessionOrgan.side == 'left' ? 'Stânga' : 'General') %}
+                    {% set imagePath = sessionOrgan.organImagePath %}
+                    {% if imagePath %}
+                        {% set imagePath = imagePath starts with '/' ? imagePath : '/' ~ imagePath %}
+                    {% endif %}
+
+                    <section class="result-section">
+                        <div class="result-section-header">
+                            {% if imagePath %}
+                                <img class="organ-icon" src="{{ imagePath }}" alt="{{ sessionOrgan.organName }}">
+                            {% else %}
+                                <span class="organ-icon organ-icon-placeholder">{{ sessionOrgan.organName|slice(0, 1)|upper }}</span>
+                            {% endif %}
+                            <div>
+                                <h2 class="organ-title">{{ sessionOrgan.organName ?: 'Organ' }}</h2>
+                                <div class="text-secondary">{{ sideLabel }}</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3">
+                            <div class="mb-3">
+                                <span class="session-info-label">Notă organ</span>
+                                <div class="note-block">{{ sessionOrgan.organNote ?: '-' }}</div>
+                            </div>
+
+                            {% if sessionOrgan.parameterResults is empty %}
+                                <p class="mb-0 text-secondary">Nu există parametri salvați pentru acest organ.</p>
+                            {% else %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-striped result-table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 45%;">Parametru</th>
+                                                <th style="width: 15%;">Tip</th>
+                                                <th>Valoare</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for result in sessionOrgan.parameterResults %}
+                                                <tr>
+                                                    <td class="fw-semibold">{{ result.parameterName ?: '-' }}</td>
+                                                    <td>{{ result.parameterValueType == 'select' ? 'Select' : 'Text' }}</td>
+                                                    <td>{{ result.value ?: '-' }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </section>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </main>
+{% endblock %}

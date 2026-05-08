@@ -1,0 +1,103 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ page_title }} | Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .navbar-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    {% include 'partials/_navbar.html.twig' %}
+
+    <main class="container py-5">
+        <div class="d-flex align-items-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h4 mb-1">{{ page_title }}</h1>
+                <p class="mb-0 text-secondary">{{ page_description }}</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{{ path('app_home') }}">Înapoi</a>
+        </div>
+
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success" role="alert">{{ message }}</div>
+        {% endfor %}
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-sm-5">
+                {{ form_start(form, { attr: { novalidate: 'novalidate' } }) }}
+                    {{ form_errors(form) }}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            {{ form_row(form.name) }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form_row(form.valueType) }}
+                        </div>
+                        <div class="col-12">
+                            {{ form_row(form.valueContent) }}
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <a class="btn btn-outline-secondary" href="{{ path('app_parameters_new') }}">Anulează</a>
+                        {{ form_widget(form.save) }}
+                    </div>
+                {{ form_end(form) }}
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
+                    <div>
+                        <h2 class="h5 mb-1">Parametri adăugați</h2>
+                        <p class="mb-0 text-secondary">Lista parametrilor existenți și valorile lor.</p>
+                    </div>
+                    <a class="btn btn-outline-primary" href="{{ path('app_parameters_new') }}">Parametru nou</a>
+                </div>
+
+                {% if parameters is empty %}
+                    <p class="mb-0 text-secondary">Nu există parametri adăugați.</p>
+                {% else %}
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Denumire</th>
+                                    <th>Tip valoare</th>
+                                    <th>Valori</th>
+                                    <th class="text-end">Acțiuni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for parameter in parameters %}
+                                    <tr{% if editing_parameter_id == parameter.id %} class="table-primary"{% endif %}>
+                                        <td>{{ parameter.name }}</td>
+                                        <td>{{ parameter.valueType == 'select' ? 'Select' : 'Text' }}</td>
+                                        <td>
+                                            {% if parameter.valueContent is empty %}
+                                                <span class="text-secondary">-</span>
+                                            {% else %}
+                                                {{ parameter.valueContent|join(', ') }}
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <a class="btn btn-sm btn-outline-primary" href="{{ path('app_parameters_edit', { id: parameter.id }) }}">Editează</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+{% endblock %}

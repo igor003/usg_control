@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 8mm;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: #eef1f4;
+            color: #111;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            line-height: 1.25;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .screen-actions {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+        }
+
+        .screen-actions a,
+        .screen-actions button {
+            border: 1px solid #1f5f93;
+            border-radius: 6px;
+            padding: 8px 12px;
+            background: #fff;
+            color: #1f5f93;
+            font: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .screen-actions button {
+            background: #1f5f93;
+            color: #fff;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto 18px;
+            padding: 8mm;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+        }
+
+        .header {
+            display: grid;
+            grid-template-columns: 60px 1fr 60px;
+            gap: 8px;
+            align-items: center;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #1f5f93;
+        }
+
+        .logo {
+            width: 90px;
+            height: 90px;
+            object-fit: contain;
+        }
+
+        .clinic-name {
+            margin: 0;
+            font-size: 17px;
+            color: #143d5e;
+        }
+
+        .document-title {
+            margin: 4px 0 6px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .section {
+            margin-top: 7px;
+        }
+
+        .section-title {
+            margin: 0 0 5px;
+            padding: 4px 6px;
+            background: #edf4f9;
+            border-left: 4px solid #1f5f93;
+            color: #143d5e;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            border-top: 1px solid #b8c2cc;
+            border-left: 1px solid #b8c2cc;
+        }
+
+        .info-cell {
+            min-height: 21px;
+            padding: 3px 5px;
+            border-right: 1px solid #b8c2cc;
+            border-bottom: 1px solid #b8c2cc;
+        }
+
+        .info-cell-wide {
+            grid-column: span 2;
+        }
+
+        .label {
+            color: #000000;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+
+        .value {
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .note {
+            min-height: 0;
+            padding: 5px;
+            border: 1px solid #b8c2cc;
+            white-space: pre-wrap;
+            font-size: 11px;
+        }
+
+        .organs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .organ {
+            page-break-inside: avoid;
+            break-inside: avoid;
+            margin: 0;
+            border: 1px solid #9fb0bf;
+            font-size: 11px;
+        }
+
+        .organ-header {
+            display: grid;
+            grid-template-columns: 26px 1fr auto;
+            gap: 5px;
+            align-items: center;
+            padding: 3px 5px;
+            background: #f6f8fa;
+            border-bottom: 1px solid #9fb0bf;
+        }
+
+        .organ-icon {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+        }
+
+        .organ-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border: 1px solid #b8c2cc;
+            border-radius: 4px;
+            color: #56616d;
+            font-weight: 700;
+            font-size: 10px;
+        }
+
+        .organ-title {
+            margin: 0;
+            color: #143d5e;
+            font-size: 12px;
+        }
+
+        .side-badge {
+            border: 1px solid #9fb0bf;
+            border-radius: 999px;
+            padding: 1px 6px;
+            background: #fff;
+            font-size: 9px;
+            font-weight: 700;
+        }
+
+        .organ-body {
+            padding: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td {
+            padding: 2px 4px;
+            border: 1px solid #b8c2cc;
+            vertical-align: top;
+            font-size: 10.5px;
+        }
+
+        td:first-child {
+            width: 62%;
+            color: #333;
+        }
+
+        td:last-child {
+            width: 38%;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .organ-note {
+            margin-top: 4px;
+        }
+
+        .signature-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            margin-top: 14px;
+        }
+
+        .signature-line {
+            border-bottom: 1px solid #111;
+            color: #56616d;
+        }
+
+        .footer-note {
+            margin-top: 8px;
+            font-size: 10px;
+            line-height: 1.2;
+        }
+
+        @media print {
+            body {
+                background: #fff;
+            }
+
+            .screen-actions {
+                display: none;
+            }
+
+            .page {
+                width: auto;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+
+<body data-auto-print="{{ app.request.query.get('auto_print') ? '1' : '0' }}">
+{% set patient = session.patient %}
+{% set city = patient ? patient.city : null %}
+{% set district = city ? city.district : null %}
+{% set genderLabel = patient and patient.gender == 'female' ? 'Feminin' : (patient and patient.gender == 'male' ? 'Masculin' : 'Altul') %}
+
+<div class="screen-actions">
+    <a href="{{ path('app_sessions_index') }}">Înapoi la lista sesiunilor</a>
+    <button type="button" onclick="window.print()">Tipărește A4</button>
+</div>
+
+<main class="page">
+    <header class="header">
+        <img class="logo" src="/images/cristela_nord_logo.jpg" alt="Cristela Nord">
+
+        <div class="text-center">
+            <h1 class="clinic-name">Cristela Nord</h1>
+            <div>Adresa: Or. Fălești, Ștefan cel Mare, 79/3</div>
+            <div>Tel: 0(259)24235</div>
+        </div>
+
+        <div></div>
+    </header>
+
+    <section class="section">
+        <div class="text-center">
+            <p class="document-title">Formular de examinare ecografică</p>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-cell">
+                <span class="label">Pacient:</span>
+                <span class="value">{{ patient ? patient.lastName ~ ' ' ~ patient.firstName : 'Pacient incognito' }}</span>
+            </div>
+
+            <div class="info-cell">
+                <span class="label">Sex:</span>
+                <span class="value">{{ patient ? genderLabel : '-' }}</span>
+            </div>
+
+            <div class="info-cell">
+                <span class="label">Anul nașterii:</span>
+                <span class="value">{{ patient and patient.birthYear ? patient.birthYear : '-' }}</span>
+            </div>
+
+            <div class="info-cell">
+                <span class="label">Telefon:</span>
+                <span class="value">{{ patient and patient.phone ? patient.phone : '-' }}</span>
+            </div>
+
+            <div class="info-cell">
+                <span class="label">IDNP:</span>
+                <span class="value">{{ patient and patient.idnp ? patient.idnp : '-' }}</span>
+            </div>
+
+            <div class="info-cell">
+                <span class="label">Seria:</span>
+                <span class="value">{{ patient and patient.seria ? patient.seria : '-' }}</span>
+            </div>
+
+            <div class="info-cell info-cell-wide">
+                <span class="label">Data examinării:</span>
+                <span class="value">{{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : '-' }}</span>
+            </div>
+
+            <div class="info-cell info-cell-wide">
+                <span class="label">Localitatea:</span>
+                <span class="value">
+                        {% if city %}
+                            {{ city.name }}{% if district %}, {{ district.name }}{% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </span>
+            </div>
+
+            <div class="info-cell info-cell-wide">
+                <span class="label">Adresă:</span>
+                <span class="value">{{ patient and patient.address ? patient.address : '-' }}</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <h2 class="section-title">Rezultatele examinării</h2>
+
+        {% if session.sessionOrgans is empty %}
+            <div class="note">Nu există organe salvate pentru această sesiune.</div>
+        {% else %}
+            <div class="organs-grid">
+                {% for sessionOrgan in session.sessionOrgans %}
+                    {% set sideLabel = sessionOrgan.side == 'right' ? 'Dreapta' : (sessionOrgan.side == 'left' ? 'Stânga' : 'General') %}
+                    {% set imagePath = sessionOrgan.organImagePath %}
+
+                    {% if imagePath %}
+                        {% set imagePath = imagePath starts with '/' ? imagePath : '/' ~ imagePath %}
+                    {% endif %}
+
+                    <article class="organ">
+                        <div class="organ-header">
+                            {% if imagePath %}
+                                <img class="organ-icon" src="{{ imagePath }}" alt="{{ sessionOrgan.organName }}">
+                            {% else %}
+                                <span class="organ-placeholder">{{ sessionOrgan.organName|slice(0, 1)|upper }}</span>
+                            {% endif %}
+
+                            <h3 class="organ-title">{{ sessionOrgan.organName ?: 'Organ' }}</h3>
+                            <span class="side-badge">{{ sideLabel }}</span>
+                        </div>
+
+                        <div class="organ-body">
+                            {% set visibleResults = [] %}
+                            {% for result in sessionOrgan.parameterResults %}
+                                {% if result.value is not empty %}
+                                    {% set visibleResults = visibleResults|merge([result]) %}
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if visibleResults is not empty %}
+                                <table>
+                                    <tbody>
+                                    {% for result in visibleResults %}
+                                        <tr>
+                                            <td>{{ result.parameterName ?: '-' }}</td>
+                                            <td>{{ result.value ?: '-' }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            {% else %}
+                                <div class="note">Nu există parametri salvați pentru acest organ.</div>
+                            {% endif %}
+
+                            {% if sessionOrgan.organNote %}
+                                <div class="organ-note">
+                                    <span class="label">Notă organ</span>
+                                    <div class="note">{{ sessionOrgan.organNote }}</div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    {% if session.sessionNote is not empty %}
+        <section class="section">
+            <h2 class="section-title">Notă sesiune</h2>
+            <div class="note">{{ session.sessionNote }}</div>
+        </section>
+    {% endif %}
+
+    <section class="section">
+        <h2 class="section-title">Concluzia</h2>
+        <div class="note">{{ session.sessionConclusion ?: '-' }}</div>
+    </section>
+
+    <div class="signature-grid">
+        <div class="signature-line">Medic</div>
+    </div>
+
+    <section class="footer-note">
+        Rezultatele se vor interpreta în context clinic de către medic. Concluzia imagistică (EUS) nu este diagnoza clinică.
+        Vă rugăm în cazul investigației repetate să prezentați datele examinării precedente cu scopul evaluării dinamicii.
+    </section>
+</main>
+
+<script>
+    if (document.body.dataset.autoPrint === '1') {
+        window.addEventListener('load', () => window.print());
+    }
+</script>
+</body>
+</html>

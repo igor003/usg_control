@@ -1,0 +1,308 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Lista pacienților | Ultrasound Examination{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        .navbar-logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+
+        .patients-table {
+            table-layout: fixed;
+            width: 100%;
+            font-size: .84rem;
+            line-height: 1.2;
+        }
+
+        .patients-table th,
+        .patients-table td {
+            padding: .32rem .35rem;
+            vertical-align: middle;
+            overflow-wrap: anywhere;
+        }
+
+        .patients-table .filter-row th {
+            padding-top: .25rem;
+            padding-bottom: .45rem;
+            vertical-align: top;
+        }
+
+        .patients-table .filter-row .form-control,
+        .patients-table .filter-row .form-select {
+            width: 100%;
+            min-width: 0;
+            padding: .2rem .3rem;
+            font-size: .78rem;
+        }
+
+        .patients-table .filter-row .filter-short {
+            min-width: 0;
+        }
+
+        .patients-table th:nth-child(1),
+        .patients-table td:nth-child(1) {
+            width: 8%;
+        }
+
+        .patients-table th:nth-child(2),
+        .patients-table td:nth-child(2) {
+            width: 8%;
+        }
+
+        .patients-table th:nth-child(3),
+        .patients-table td:nth-child(3) {
+            width: 5%;
+        }
+
+        .patients-table th:nth-child(4),
+        .patients-table td:nth-child(4) {
+            width: 6%;
+        }
+
+        .patients-table th:nth-child(5),
+        .patients-table td:nth-child(5) {
+            width: 9%;
+        }
+
+        .patients-table th:nth-child(6),
+        .patients-table td:nth-child(6) {
+            width: 11%;
+        }
+
+        .patients-table th:nth-child(7),
+        .patients-table td:nth-child(7) {
+            width: 6%;
+        }
+
+        .patients-table th:nth-child(8),
+        .patients-table td:nth-child(8) {
+            width: 8%;
+        }
+
+        .patients-table th:nth-child(9),
+        .patients-table td:nth-child(9) {
+            width: 9%;
+        }
+
+        .patients-table th:nth-child(10),
+        .patients-table td:nth-child(10) {
+            width: 10%;
+        }
+
+        .patients-table th:nth-child(11),
+        .patients-table td:nth-child(11) {
+            width: 5%;
+        }
+
+        .patients-table th:nth-child(12),
+        .patients-table td:nth-child(12) {
+            width: 10%;
+        }
+        .patients-table th:nth-child(12),
+        .patients-table td:nth-child(12) {
+            width: 10%;
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+    {% include 'partials/_navbar.html.twig' %}
+
+    <main class="container-fluid px-2 px-xl-3 py-4">
+        <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+            <div>
+                <h1 class="h4 mb-1">Lista pacienților</h1>
+                <p class="mb-0 text-secondary">Căutați și filtrați pacienții după orice câmp.</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-secondary" href="{{ path('app_home') }}">Înapoi</a>
+                <a class="btn btn-primary" href="{{ path('app_patients_new') }}">Pacient nou</a>
+            </div>
+        </div>
+
+        {% for message in app.flashes('success') %}
+            <div class="alert alert-success" role="alert">{{ message }}</div>
+        {% endfor %}
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-2 p-lg-3">
+                {% if patients is empty %}
+                    <p class="mb-0 text-secondary">Nu există pacienți adăugați.</p>
+                {% else %}
+                    <div class="row g-3 align-items-end mb-3">
+                        <div class="col-12 col-lg-5">
+                            <label class="form-label" for="patients_global_filter">Căutare generală</label>
+                            <input class="form-control" id="patients_global_filter" type="search" placeholder="Căutați în toate câmpurile" data-patient-table-global>
+                        </div>
+                        <div class="col-12 col-lg-auto">
+                            <div class="text-secondary" data-patient-table-count></div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0 patients-table" data-patient-table>
+                            <thead>
+                                <tr>
+                                    <th>Nume</th>
+                                    <th>Prenume</th>
+                                    <th>Sex</th>
+                                    <th>Anul nașterii</th>
+                                    <th>Telefon</th>
+                                    <th>IDNP</th>
+                                    <th>Seria</th>
+                                    <th>Raion</th>
+                                    <th>Localitatea</th>
+                                    <th>Adresă</th>
+                                    <th>Înlesniri</th>
+                                    <th>Creat la</th>
+                                    <th>Acțiuni</th>
+                                </tr>
+                                <tr class="filter-row">
+                                    <th><input class="form-control" type="search" aria-label="Filtru după nume" data-patient-table-filter data-column="0"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după prenume" data-patient-table-filter data-column="1"></th>
+                                    <th>
+                                        <select class="form-select filter-short" aria-label="Filtru după sex" data-patient-table-filter data-column="2">
+                                            <option value="">Toate</option>
+                                            <option value="Feminin">Feminin</option>
+                                            <option value="Masculin">Masculin</option>
+                                            <option value="Altul">Altul</option>
+                                        </select>
+                                    </th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după anul nașterii" data-patient-table-filter data-column="3"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după telefon" data-patient-table-filter data-column="4"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după IDNP" data-patient-table-filter data-column="5"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după seria" data-patient-table-filter data-column="6"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după raion sau municipiu" data-patient-table-filter data-column="7"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după localitate" data-patient-table-filter data-column="8"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după adresă" data-patient-table-filter data-column="9"></th>
+                                    <th>
+                                        <select class="form-select filter-short" aria-label="Filtru după înlesniri" data-patient-table-filter data-column="10">
+                                            <option value="">Toate</option>
+                                            <option value="Da">Da</option>
+                                            <option value="Nu">Nu</option>
+                                        </select>
+                                    </th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după data creării" data-patient-table-filter data-column="11"></th>
+                                    <th></th>
+
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for patient in patients %}
+                                    {% set genderLabel = patient.gender == 'female' ? 'Feminin' : (patient.gender == 'male' ? 'Masculin' : 'Altul') %}
+                                    <tr data-patient-row>
+                                        <td data-filter-value="{{ patient.lastName }}">
+                                            <div class="fw-semibold">{{ patient.lastName }}</div>
+                                        </td>
+                                        <td data-filter-value="{{ patient.firstName }}">{{ patient.firstName }}</td>
+                                        <td data-filter-value="{{ genderLabel }}">{{ genderLabel }}</td>
+                                        <td data-filter-value="{{ patient.birthYear ?: '' }}">{{ patient.birthYear ?: '-' }}</td>
+                                        <td data-filter-value="{{ patient.phone ?: '' }}">{{ patient.phone ?: '-' }}</td>
+                                        <td data-filter-value="{{ patient.idnp ?: '' }}">{{ patient.idnp ?: '-' }}</td>
+                                        <td data-filter-value="{{ patient.seria ?: '' }}">{{ patient.seria ?: '-' }}</td>
+                                        <td data-filter-value="{{ patient.city ? patient.city.district.name : '' }}">{{ patient.city ? patient.city.district.name : '-' }}</td>
+                                        <td data-filter-value="{{ patient.city ? patient.city.name : '' }}">{{ patient.city ? patient.city.name : '-' }}</td>
+                                        <td data-filter-value="{{ patient.address ?: '' }}">{{ patient.address ?: '-' }}</td>
+                                        <td data-filter-value="{{ patient.beneficiary ? 'Da' : 'Nu' }}">{{ patient.beneficiary ? 'Da' : 'Nu' }}</td>
+                                        <td data-filter-value="{{ patient.createdAt ? patient.createdAt|date('d.m.Y H:i') : '' }}">{{ patient.createdAt ? patient.createdAt|date('d.m.Y H:i') : '-' }}</td>
+                                        <td>
+                                            <a class="" href="{{ path('app_patients_edit', { id: patient.id }) }}"> <img class="navbar-logo" src="/images/edit.png" alt="Cristela Nord"></a>
+                                        </td>
+                                        {#
+<td data-filter-value="{{ patient.updatedAt ? patient.updatedAt|date('d.m.Y H:i') : '' }}">{{ patient.updatedAt ? patient.updatedAt|date('d.m.Y H:i') : '-' }}</td>#}
+                                    </tr>
+                                {% endfor %}
+                                <tr data-patient-table-empty hidden>
+                                    <td class="text-center text-secondary py-4" colspan="13">Nu au fost găsiți pacienți pentru filtrele selectate.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        document.querySelectorAll('[data-patient-table]').forEach((table) => {
+            const globalFilter = document.querySelector('[data-patient-table-global]');
+            const filters = Array.from(document.querySelectorAll('[data-patient-table-filter]'));
+            const rows = Array.from(table.querySelectorAll('[data-patient-row]'));
+            const emptyRow = table.querySelector('[data-patient-table-empty]');
+            const count = document.querySelector('[data-patient-table-count]');
+
+            const normalizeValue = (value) => value
+                .toString()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[șş]/g, 's')
+                .replace(/[țţ]/g, 't')
+                .toLowerCase()
+                .trim();
+
+            const getCellValue = (row, column) => {
+                const cell = row.querySelectorAll('[data-filter-value]')[column];
+
+                return cell ? cell.dataset.filterValue : '';
+            };
+
+            const updateCount = (visible) => {
+                if (count) {
+                    count.textContent = `${visible} din ${rows.length} pacienți`;
+                }
+            };
+
+            const applyFilters = () => {
+                const globalTerm = normalizeValue(globalFilter ? globalFilter.value : '');
+                let visible = 0;
+
+                rows.forEach((row) => {
+                    const rowText = normalizeValue(
+                        Array.from(row.querySelectorAll('[data-filter-value]'))
+                            .map((cell) => cell.dataset.filterValue)
+                            .join(' ')
+                    );
+                    const matchesGlobal = globalTerm === '' || rowText.includes(globalTerm);
+                    const matchesColumns = filters.every((filter) => {
+                        const term = normalizeValue(filter.value);
+
+                        if (term === '') {
+                            return true;
+                        }
+
+                        return normalizeValue(getCellValue(row, Number(filter.dataset.column))).includes(term);
+                    });
+                    const isVisible = matchesGlobal && matchesColumns;
+
+                    row.hidden = !isVisible;
+
+                    if (isVisible) {
+                        visible += 1;
+                    }
+                });
+
+                if (emptyRow) {
+                    emptyRow.hidden = visible !== 0;
+                }
+
+                updateCount(visible);
+            };
+
+            if (globalFilter) {
+                globalFilter.addEventListener('input', applyFilters);
+            }
+
+            filters.forEach((filter) => {
+                filter.addEventListener('input', applyFilters);
+                filter.addEventListener('change', applyFilters);
+            });
+
+            applyFilters();
+        });
+    </script>
+{% endblock %}
