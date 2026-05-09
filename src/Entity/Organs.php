@@ -6,6 +6,7 @@ use App\Repository\OrgansRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: OrgansRepository::class)]
 class Organs
@@ -16,10 +17,15 @@ class Organs
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Assert\NotBlank(message: 'Denumirea organului este obligatorie.')]
     private ?string $name = null;
 
     #[ORM\Column]
     private ?bool $paried = null;
+
+    #[ORM\ManyToOne(inversedBy: 'organs')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?UltrasoundType $ultrasound_type = null;
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $image_path = null;
@@ -70,6 +76,18 @@ class Organs
     public function setParied(bool $paried): static
     {
         $this->paried = $paried;
+
+        return $this;
+    }
+
+    public function getUltrasoundType(): ?UltrasoundType
+    {
+        return $this->ultrasound_type;
+    }
+
+    public function setUltrasoundType(?UltrasoundType $ultrasound_type): static
+    {
+        $this->ultrasound_type = $ultrasound_type;
 
         return $this;
     }

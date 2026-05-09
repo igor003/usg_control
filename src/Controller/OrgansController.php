@@ -36,7 +36,7 @@ final class OrgansController extends AbstractController
 
                 return $this->render('organs/new.html.twig', [
                     'form' => $form,
-                    'organs' => $organsRepository->findBy([], ['sort_order' => 'ASC', 'name' => 'ASC', 'id' => 'ASC']),
+                    'organs' => $this->findOrgansForList($organsRepository),
                     'page_title' => 'Organ nou',
                     'page_description' => 'Adăugați organul și imaginea utilizată în lista pentru examinare.',
                     'editing_organ_id' => null,
@@ -63,7 +63,7 @@ final class OrgansController extends AbstractController
 
         return $this->render('organs/new.html.twig', [
             'form' => $form,
-            'organs' => $organsRepository->findBy([], ['sort_order' => 'ASC', 'name' => 'ASC', 'id' => 'ASC']),
+            'organs' => $this->findOrgansForList($organsRepository),
             'page_title' => 'Organ nou',
             'page_description' => 'Adăugați organul și imaginea utilizată în lista pentru examinare.',
             'editing_organ_id' => null,
@@ -91,7 +91,7 @@ final class OrgansController extends AbstractController
 
                 return $this->render('organs/new.html.twig', [
                     'form' => $form,
-                    'organs' => $organsRepository->findBy([], ['sort_order' => 'ASC', 'name' => 'ASC', 'id' => 'ASC']),
+                    'organs' => $this->findOrgansForList($organsRepository),
                     'page_title' => 'Editare organ',
                     'page_description' => 'Actualizați organul selectat.',
                     'editing_organ_id' => $organ->getId(),
@@ -110,7 +110,7 @@ final class OrgansController extends AbstractController
 
         return $this->render('organs/new.html.twig', [
             'form' => $form,
-            'organs' => $organsRepository->findBy([], ['sort_order' => 'ASC', 'name' => 'ASC', 'id' => 'ASC']),
+            'organs' => $this->findOrgansForList($organsRepository),
             'page_title' => 'Editare organ',
             'page_description' => 'Actualizați organul selectat.',
             'editing_organ_id' => $organ->getId(),
@@ -156,5 +156,24 @@ final class OrgansController extends AbstractController
         }
 
         return null;
+    }
+
+    /**
+     * @return Organs[]
+     */
+    private function findOrgansForList(OrgansRepository $organsRepository): array
+    {
+        return $organsRepository
+            ->createQueryBuilder('o')
+            ->leftJoin('o.ultrasound_type', 'ut')
+            ->addSelect('ut')
+            ->orderBy('ut.sort_order', 'ASC')
+            ->addOrderBy('ut.name', 'ASC')
+            ->addOrderBy('o.sort_order', 'ASC')
+            ->addOrderBy('o.name', 'ASC')
+            ->addOrderBy('o.id', 'ASC')
+            ->getQuery()
+            ->getResult()
+        ;
     }
 }

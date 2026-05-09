@@ -58,9 +58,12 @@
                             {{ form_row(form.name) }}
                         </div>
                         <div class="col-md-3">
+                            {{ form_row(form.ultrasoundType) }}
+                        </div>
+                        <div class="col-md-3">
                             {{ form_row(form.sortOrder) }}
                         </div>
-                        <div class="col-md-3 d-flex align-items-center pt-md-4">
+                        <div class="col-md-4 d-flex align-items-center pt-md-4">
                             {{ form_row(form.paried) }}
                         </div>
                         <div class="col-md-8">
@@ -100,6 +103,7 @@
                             <thead>
                                 <tr>
                                     <th>Imagine</th>
+                                    <th>Tip UZI</th>
                                     <th>Nr. ord</th>
                                     <th>Denumire</th>
                                     <th>Organ pereche</th>
@@ -118,6 +122,7 @@
                                                 <span class="text-secondary">-</span>
                                             {% endif %}
                                         </td>
+                                        <td>{{ organ.ultrasoundType ? organ.ultrasoundType.name : '-' }}</td>
                                         <td>{{ organ.sortOrder }}</td>
                                         <td class="fw-semibold">{{ organ.name }}</td>
                                         <td>{{ organ.paried ? 'Da' : 'Nu' }}</td>

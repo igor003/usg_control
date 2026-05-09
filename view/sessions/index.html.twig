@@ -39,17 +39,17 @@
 
         .sessions-table th:nth-child(1),
         .sessions-table td:nth-child(1) {
-            width: 6%;
+            width: 5%;
         }
 
         .sessions-table th:nth-child(2),
         .sessions-table td:nth-child(2) {
-            width: 10%;
+            width: 8%;
         }
 
         .sessions-table th:nth-child(3),
         .sessions-table td:nth-child(3) {
-            width: 8%;
+            width: 10%;
         }
 
         .sessions-table th:nth-child(4),
@@ -59,26 +59,31 @@
 
         .sessions-table th:nth-child(5),
         .sessions-table td:nth-child(5) {
-            width: 12%;
+            width: 8%;
         }
 
         .sessions-table th:nth-child(6),
         .sessions-table td:nth-child(6) {
-            width: 18%;
+            width: 12%;
         }
 
         .sessions-table th:nth-child(7),
         .sessions-table td:nth-child(7) {
-            width: 10%;
+            width: 18%;
         }
 
         .sessions-table th:nth-child(8),
         .sessions-table td:nth-child(8) {
-            width: 9%;
+            width: 10%;
         }
 
         .sessions-table th:nth-child(9),
         .sessions-table td:nth-child(9) {
+            width: 9%;
+        }
+
+        .sessions-table th:nth-child(10),
+        .sessions-table td:nth-child(10) {
             width: 4%;
         }
 
@@ -151,6 +156,7 @@
                         <table class="table table-sm table-hover align-middle mb-0 sessions-table" data-session-table>
                             <thead>
                                 <tr>
+                                    <th>ID</th>
                                     <th>Data</th>
                                     <th>Pacient</th>
                                     <th>IDNP</th>
@@ -162,14 +168,15 @@
                                     <th>Acțiuni</th>
                                 </tr>
                                 <tr class="filter-row">
-                                    <th><input class="form-control" type="search" aria-label="Filtru după dată" data-session-table-filter data-column="0"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după pacient" data-session-table-filter data-column="1"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după IDNP" data-session-table-filter data-column="2"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după telefon" data-session-table-filter data-column="3"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după localitate" data-session-table-filter data-column="4"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după organe" data-session-table-filter data-column="5"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după notă" data-session-table-filter data-column="6"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după concluzie" data-session-table-filter data-column="7"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după ID" data-session-table-filter data-column="0"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după dată" data-session-table-filter data-column="1"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după pacient" data-session-table-filter data-column="2"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după IDNP" data-session-table-filter data-column="3"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după telefon" data-session-table-filter data-column="4"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după localitate" data-session-table-filter data-column="5"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după organe" data-session-table-filter data-column="6"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după notă" data-session-table-filter data-column="7"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după concluzie" data-session-table-filter data-column="8"></th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -184,6 +191,7 @@
                                         {% set organLabels = organLabels|merge([sessionOrgan.organName ~ (sideLabel ? ' - ' ~ sideLabel : '')]) %}
                                     {% endfor %}
                                     <tr data-session-row>
+                                        <td data-filter-value="{{ session.id }}">{{ session.id }}</td>
                                         <td data-filter-value="{{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : '' }}">
                                             {{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : '-' }}
                                         </td>
@@ -221,7 +229,7 @@
                                     </tr>
                                 {% endfor %}
                                 <tr data-session-table-empty hidden>
-                                    <td class="text-center text-secondary py-4" colspan="9">Nu au fost găsite sesiuni pentru filtrele selectate.</td>
+                                    <td class="text-center text-secondary py-4" colspan="10">Nu au fost găsite sesiuni pentru filtrele selectate.</td>
                                 </tr>
                             </tbody>
                         </table>

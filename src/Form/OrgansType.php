@@ -3,7 +3,9 @@
 namespace App\Form;
 
 use App\Entity\Organs;
+use App\Entity\UltrasoundType;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
@@ -23,6 +25,18 @@ class OrgansType extends AbstractType
                 'attr' => [
                     'maxlength' => 255,
                 ],
+            ])
+            ->add('ultrasoundType', EntityType::class, [
+                'class' => UltrasoundType::class,
+                'choice_label' => 'name',
+                'label' => 'Tip UZI',
+                'required' => false,
+                'placeholder' => 'Alegeți tipul UZI',
+                'query_builder' => static fn (\App\Repository\UltrasoundTypeRepository $repository) => $repository
+                    ->createQueryBuilder('ut')
+                    ->orderBy('ut.sort_order', 'ASC')
+                    ->addOrderBy('ut.name', 'ASC')
+                    ->addOrderBy('ut.id', 'ASC'),
             ])
             ->add('paried', CheckboxType::class, [
                 'label' => 'Organ pereche',

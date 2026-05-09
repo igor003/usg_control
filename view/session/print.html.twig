@@ -65,13 +65,13 @@
             grid-template-columns: 60px 1fr 60px;
             gap: 8px;
             align-items: center;
-            padding-bottom: 6px;
+            padding-bottom: 0px;
             border-bottom: 2px solid #1f5f93;
         }
 
         .logo {
-            width: 90px;
-            height: 90px;
+            width: 60px;
+            height: 60px;
             object-fit: contain;
         }
 
@@ -155,7 +155,7 @@
 
         .organ-header {
             display: grid;
-            grid-template-columns: 26px 1fr auto;
+            grid-template-columns: 1fr auto;
             gap: 5px;
             align-items: center;
             padding: 3px 5px;
@@ -184,8 +184,10 @@
 
         .organ-title {
             margin: 0;
+            min-width: 0;
             color: #143d5e;
             font-size: 12px;
+            white-space: nowrap;
         }
 
         .side-badge {
@@ -234,7 +236,16 @@
             gap: 18px;
             margin-top: 14px;
         }
+        .signature-grid-2 {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0px;
+        }
 
+        .signature-grid-2 .signature-line {
+            width: 42%;
+            text-align: left;
+        }
         .signature-line {
             border-bottom: 1px solid #111;
             color: #56616d;
@@ -271,6 +282,13 @@
 {% set city = patient ? patient.city : null %}
 {% set district = city ? city.district : null %}
 {% set genderLabel = patient and patient.gender == 'female' ? 'Feminin' : (patient and patient.gender == 'male' ? 'Masculin' : 'Altul') %}
+{% set ultrasoundTypes = [] %}
+{% for sessionOrgan in session.sessionOrgans %}
+    {% set ultrasoundTypeName = sessionOrgan.organ and sessionOrgan.organ.ultrasoundType ? sessionOrgan.organ.ultrasoundType.name : '' %}
+    {% if ultrasoundTypeName and ultrasoundTypeName not in ultrasoundTypes %}
+        {% set ultrasoundTypes = ultrasoundTypes|merge([ultrasoundTypeName]) %}
+    {% endif %}
+{% endfor %}
 
 <div class="screen-actions">
     <a href="{{ path('app_sessions_index') }}">Înapoi la lista sesiunilor</a>
@@ -293,6 +311,13 @@
     <section class="section">
         <div class="text-center">
             <p class="document-title">Formular de examinare ecografică</p>
+            <section>
+                <div class="text-center"><strong>Tipul examinării: {{ ultrasoundTypes is empty ? '-' : ultrasoundTypes|join(', ') }}</strong></div>
+            </section>
+            <div class="">
+                <span class="">Data examinării:</span>
+                <span class="value">{{ session.sessionDate ? session.sessionDate|date('d.m.Y') : '-' }} </span> <span> - ID sesiune: <strong>{{ session.id }} </strong></span>
+            </div>
         </div>
 
         <div class="info-grid">
@@ -300,10 +325,9 @@
                 <span class="label">Pacient:</span>
                 <span class="value">{{ patient ? patient.lastName ~ ' ' ~ patient.firstName : 'Pacient incognito' }}</span>
             </div>
-
             <div class="info-cell">
-                <span class="label">Sex:</span>
-                <span class="value">{{ patient ? genderLabel : '-' }}</span>
+                <span class="label">IDNP:</span>
+                <span class="value">{{ patient and patient.idnp ? patient.idnp : '-' }}</span>
             </div>
 
             <div class="info-cell">
@@ -316,20 +340,7 @@
                 <span class="value">{{ patient and patient.phone ? patient.phone : '-' }}</span>
             </div>
 
-            <div class="info-cell">
-                <span class="label">IDNP:</span>
-                <span class="value">{{ patient and patient.idnp ? patient.idnp : '-' }}</span>
-            </div>
 
-            <div class="info-cell">
-                <span class="label">Seria:</span>
-                <span class="value">{{ patient and patient.seria ? patient.seria : '-' }}</span>
-            </div>
-
-            <div class="info-cell info-cell-wide">
-                <span class="label">Data examinării:</span>
-                <span class="value">{{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : '-' }}</span>
-            </div>
 
             <div class="info-cell info-cell-wide">
                 <span class="label">Localitatea:</span>
@@ -348,16 +359,20 @@
             </div>
         </div>
     </section>
+    <div class="signature-grid-2">
+        <div class="signature-line">Acordul Pacientului</div>
+    </div>
 
     <section class="section">
-        <h2 class="section-title">Rezultatele examinării</h2>
+{#        <h2 class="section-title">Rezultatele examinării </h2>#}
 
         {% if session.sessionOrgans is empty %}
             <div class="note">Nu există organe salvate pentru această sesiune.</div>
         {% else %}
             <div class="organs-grid">
                 {% for sessionOrgan in session.sessionOrgans %}
-                    {% set sideLabel = sessionOrgan.side == 'right' ? 'Dreapta' : (sessionOrgan.side == 'left' ? 'Stânga' : 'General') %}
+                    {% set sideLabel = sessionOrgan.side == 'right' ? 'Dreapta' : (sessionOrgan.side == 'left' ? 'Stânga':'.') %}
+                    {% set showSideLabel = sessionOrgan.organ and sessionOrgan.organ.paried %}
                     {% set imagePath = sessionOrgan.organImagePath %}
 
                     {% if imagePath %}
@@ -366,14 +381,16 @@
 
                     <article class="organ">
                         <div class="organ-header">
-                            {% if imagePath %}
-                                <img class="organ-icon" src="{{ imagePath }}" alt="{{ sessionOrgan.organName }}">
-                            {% else %}
-                                <span class="organ-placeholder">{{ sessionOrgan.organName|slice(0, 1)|upper }}</span>
-                            {% endif %}
+{#                            {% if imagePath %}#}
+{#                                <img class="organ-icon" src="{{ imagePath }}" alt="{{ sessionOrgan.organName }}">#}
+{#                            {% else %}#}
+{#                                <span class="organ-placeholder">{{ sessionOrgan.organName|slice(0, 1)|upper }}</span>#}
+{#                            {% endif %}#}
 
                             <h3 class="organ-title">{{ sessionOrgan.organName ?: 'Organ' }}</h3>
-                            <span class="side-badge">{{ sideLabel }}</span>
+                            {% if showSideLabel %}
+                                <span class="side-badge">{{ sideLabel }}</span>
+                            {% endif %}
                         </div>
 
                         <div class="organ-body">
@@ -414,7 +431,7 @@
 
     {% if session.sessionNote is not empty %}
         <section class="section">
-            <h2 class="section-title">Notă sesiune</h2>
+{#            <h2 class="section-title">Notă sesiune</h2>#}
             <div class="note">{{ session.sessionNote }}</div>
         </section>
     {% endif %}
