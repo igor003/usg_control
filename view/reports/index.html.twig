@@ -181,11 +181,13 @@
                                     {% set patient = session.patient %}
                                     {% set city = patient ? patient.city : null %}
                                     {% set district = city ? city.district : null %}
+                                    {% set selectedUltrasoundType = session.ultrasoundType %}
                                     {% set examinationTypes = [] %}
                                     {% for sessionOrgan in session.sessionOrgans %}
                                         {% set sideLabel = sessionOrgan.side == 'right' ? 'Dreapta' : (sessionOrgan.side == 'left' ? 'Stânga' : '') %}
                                         {% set examinationTypes = examinationTypes|merge([sessionOrgan.organName ~ (sideLabel ? ' - ' ~ sideLabel : '')]) %}
                                     {% endfor %}
+                                    {% set examinationTypeLabel = selectedUltrasoundType ? selectedUltrasoundType.name : (examinationTypes|join(', ') ?: '-') %}
                                     {% set patientName = patient ? patient.lastName ~ ' ' ~ patient.firstName : '' %}
                                     {% set beneficiary = patient and patient.beneficiary ? 'Da' : 'Nu' %}
                                     {% set districtName = district ? district.name : '' %}
@@ -200,8 +202,8 @@
                                         <td data-filter-value="{{ patientName }}">
                                             <div class="fw-semibold">{{ patientName ?: '-' }}</div>
                                         </td>
-                                        <td data-filter-value="{{ examinationTypes|join(' ') }}">
-                                            <div class="report-cell-preview">{{ examinationTypes|join(', ') ?: '-' }}</div>
+                                        <td data-filter-value="{{ selectedUltrasoundType ? selectedUltrasoundType.name : examinationTypes|join(' ') }}">
+                                            <div class="report-cell-preview">{{ examinationTypeLabel }}</div>
                                         </td>
                                         <td data-filter-value="{{ beneficiary }}">{{ beneficiary }}</td>
                                         <td data-filter-value="{{ districtName }}">{{ districtName ?: '-' }}</td>

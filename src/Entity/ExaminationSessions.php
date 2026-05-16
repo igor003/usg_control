@@ -19,6 +19,10 @@ class ExaminationSessions
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Patients $patient = null;
 
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?UltrasoundType $ultrasound_type = null;
+
     #[ORM\Column]
     private ?\DateTimeImmutable $session_date = null;
 
@@ -59,6 +63,18 @@ class ExaminationSessions
     public function setPatient(?Patients $patient): static
     {
         $this->patient = $patient;
+
+        return $this;
+    }
+
+    public function getUltrasoundType(): ?UltrasoundType
+    {
+        return $this->ultrasound_type;
+    }
+
+    public function setUltrasoundType(?UltrasoundType $ultrasound_type): static
+    {
+        $this->ultrasound_type = $ultrasound_type;
 
         return $this;
     }
@@ -119,7 +135,9 @@ class ExaminationSessions
 
     public function removeSessionOrgan(ExaminationSessionOrgans $session_organ): static
     {
-        $this->session_organs->removeElement($session_organ);
+        if ($this->session_organs->removeElement($session_organ) && $session_organ->getSession() === $this) {
+            $session_organ->setSession(null);
+        }
 
         return $this;
     }

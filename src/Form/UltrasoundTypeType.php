@@ -16,7 +16,7 @@ class UltrasoundTypeType extends AbstractType
     {
         $builder
             ->add('name', TextType::class, [
-                'label' => 'Denumire tip UZI',
+                'label' => 'Denumire tip USG',
                 'attr' => [
                     'maxlength' => 255,
                 ],
@@ -29,7 +29,7 @@ class UltrasoundTypeType extends AbstractType
                 'help' => 'Tipurile cu valoare mai mică vor fi afișate mai sus.',
             ])
             ->add('save', SubmitType::class, [
-                'label' => 'Salvează tipul UZI',
+                'label' => 'Salvează tipul USG',
                 'attr' => [
                     'class' => 'btn btn-primary',
                 ],

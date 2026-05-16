@@ -18,7 +18,7 @@ class UltrasoundType
     private ?int $id = null;
 
     #[ORM\Column(length: 255, unique: true)]
-    #[Assert\NotBlank(message: 'Denumirea tipului UZI este obligatorie.')]
+    #[Assert\NotBlank(message: 'Denumirea tipului USG este obligatorie.')]
     #[Assert\Length(max: 255, maxMessage: 'Denumirea nu poate avea mai mult de {{ limit }} caractere.')]
     private ?string $name = null;
 
@@ -26,11 +26,11 @@ class UltrasoundType
     private int $sort_order = 0;
 
     /**
-     * @var Collection<int, Organs>
+     * @var Collection<int, UltrasoundTypeOrgan>
      */
-    #[ORM\OneToMany(mappedBy: 'ultrasound_type', targetEntity: Organs::class)]
-    #[ORM\OrderBy(['sort_order' => 'ASC', 'name' => 'ASC', 'id' => 'ASC'])]
-    private Collection $organs;
+    #[ORM\OneToMany(mappedBy: 'ultrasoundType', targetEntity: UltrasoundTypeOrgan::class, cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OrderBy(['sortOrder' => 'ASC'])]
+    private Collection $ultrasoundTypeOrgans;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $created_at = null;
@@ -40,7 +40,7 @@ class UltrasoundType
 
     public function __construct()
     {
-        $this->organs = new ArrayCollection();
+        $this->ultrasoundTypeOrgans = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -72,33 +72,6 @@ class UltrasoundType
         return $this;
     }
 
-    /**
-     * @return Collection<int, Organs>
-     */
-    public function getOrgans(): Collection
-    {
-        return $this->organs;
-    }
-
-    public function addOrgan(Organs $organ): static
-    {
-        if (!$this->organs->contains($organ)) {
-            $this->organs->add($organ);
-            $organ->setUltrasoundType($this);
-        }
-
-        return $this;
-    }
-
-    public function removeOrgan(Organs $organ): static
-    {
-        if ($this->organs->removeElement($organ) && $organ->getUltrasoundType() === $this) {
-            $organ->setUltrasoundType(null);
-        }
-
-        return $this;
-    }
-
     public function getCreatedAt(): ?\DateTimeImmutable
     {
         return $this->created_at;
@@ -119,6 +92,31 @@ class UltrasoundType
     public function setUpdatedAt(\DateTimeImmutable $updated_at): static
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UltrasoundTypeOrgan>
+     */
+    public function getUltrasoundTypeOrgans(): Collection
+    {
+        return $this->ultrasoundTypeOrgans;
+    }
+
+    public function addUltrasoundTypeOrgan(UltrasoundTypeOrgan $ultrasoundTypeOrgan): static
+    {
+        if (!$this->ultrasoundTypeOrgans->contains($ultrasoundTypeOrgan)) {
+            $this->ultrasoundTypeOrgans->add($ultrasoundTypeOrgan);
+            $ultrasoundTypeOrgan->setUltrasoundType($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUltrasoundTypeOrgan(UltrasoundTypeOrgan $ultrasoundTypeOrgan): static
+    {
+        $this->ultrasoundTypeOrgans->removeElement($ultrasoundTypeOrgan);
 
         return $this;
     }

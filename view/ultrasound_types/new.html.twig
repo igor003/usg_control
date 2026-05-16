@@ -9,6 +9,10 @@
             height: 44px;
             object-fit: contain;
         }
+
+        .control-order-input {
+            width: 96px;
+        }
     </style>
 {% endblock %}
 
@@ -40,6 +44,59 @@
                         <div class="col-md-4">
                             {{ form_row(form.sortOrder) }}
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">Organe</label>
+                            {% if organs is empty %}
+                                <p class="mb-0 text-secondary">Nu există organe adăugate.</p>
+                            {% else %}
+                                {% set selected_organ_ids = selected_organ_orders|keys %}
+                                <div class="table-responsive" data-organ-order-list>
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Activ</th>
+                                                <th>Organ</th>
+                                                <th>Ordine</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for organ in organs %}
+                                                {% set is_selected = organ.id in selected_organ_ids %}
+                                                <tr>
+                                                    <td>
+                                                        <input
+                                                            class="form-check-input"
+                                                            type="checkbox"
+                                                            name="organ_ids[]"
+                                                            value="{{ organ.id }}"
+                                                            id="organ_{{ organ.id }}"
+                                                            data-organ-checkbox
+                                                            {% if is_selected %}checked{% endif %}
+                                                        >
+                                                    </td>
+                                                    <td>
+                                                        <label class="form-check-label" for="organ_{{ organ.id }}">{{ organ.name }}</label>
+                                                    </td>
+                                                    <td>
+                                                        <input
+                                                            class="form-control form-control-sm control-order-input"
+                                                            type="number"
+                                                            min="0"
+                                                            step="1"
+                                                            name="organ_order[{{ organ.id }}]"
+                                                            data-organ-order
+                                                            data-organ-id="{{ organ.id }}"
+                                                            value="{{ selected_organ_orders[organ.id] ?? loop.index }}"
+                                                            readonly
+                                                        >
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 mt-4">
@@ -54,14 +111,14 @@
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
                     <div>
-                        <h2 class="h5 mb-1">Tipuri UZI adăugate</h2>
-                        <p class="mb-0 text-secondary">Lista tipurilor UZI disponibile pentru organe.</p>
+                        <h2 class="h5 mb-1">Tipuri USG adăugate</h2>
+                        <p class="mb-0 text-secondary">Lista tipurilor USG disponibile pentru organe.</p>
                     </div>
-                    <a class="btn btn-outline-primary" href="{{ path('app_ultrasound_types_new') }}">Tip UZI nou</a>
+                    <a class="btn btn-outline-primary" href="{{ path('app_ultrasound_types_new') }}">Tip USG nou</a>
                 </div>
 
                 {% if ultrasound_types is empty %}
-                    <p class="mb-0 text-secondary">Nu există tipuri UZI adăugate.</p>
+                    <p class="mb-0 text-secondary">Nu există tipuri USG adăugate.</p>
                 {% else %}
                     <div class="table-responsive">
                         <table class="table align-middle mb-0">
@@ -69,6 +126,7 @@
                                 <tr>
                                     <th>Nr. ord</th>
                                     <th>Denumire</th>
+                                    <th>Organe</th>
                                     <th>Creat la</th>
                                     <th>Actualizat la</th>
                                     <th class="text-end">Acțiuni</th>
@@ -79,6 +137,17 @@
                                     <tr{% if editing_ultrasound_type_id == ultrasound_type.id %} class="table-primary"{% endif %}>
                                         <td>{{ ultrasound_type.sortOrder }}</td>
                                         <td class="fw-semibold">{{ ultrasound_type.name }}</td>
+                                        <td>
+                                            {% if ultrasound_type.ultrasoundTypeOrgans is empty %}
+                                                <span class="text-secondary">-</span>
+                                            {% else %}
+                                                {% for link in ultrasound_type.ultrasoundTypeOrgans %}
+                                                    {% if link.organ %}
+                                                        <span class="badge text-bg-secondary me-1 mb-1">{{ link.sortOrder }}. {{ link.organ.name }}</span>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+                                        </td>
                                         <td>{{ ultrasound_type.createdAt ? ultrasound_type.createdAt|date('d.m.Y H:i') : '-' }}</td>
                                         <td>{{ ultrasound_type.updatedAt ? ultrasound_type.updatedAt|date('d.m.Y H:i') : '-' }}</td>
                                         <td class="text-end">
@@ -93,4 +162,54 @@
             </div>
         </div>
     </main>
+{% endblock %}
+
+{% block javascripts %}
+    <script>
+        document.querySelectorAll('[data-organ-order-list]').forEach((container) => {
+            const checkboxes = Array.from(container.querySelectorAll('[data-organ-checkbox]'));
+            const orderInputs = new Map(
+                Array.from(container.querySelectorAll('[data-organ-order]'))
+                    .map((input) => [input.dataset.organId, input])
+            );
+
+            let selectedOrder = checkboxes
+                .filter((checkbox) => checkbox.checked)
+                .sort((left, right) => {
+                    const leftOrder = Number(orderInputs.get(left.value)?.value || 0);
+                    const rightOrder = Number(orderInputs.get(right.value)?.value || 0);
+
+                    return leftOrder - rightOrder;
+                })
+                .map((checkbox) => checkbox.value);
+
+            const syncOrders = () => {
+                checkboxes.forEach((checkbox) => {
+                    const input = orderInputs.get(checkbox.value);
+
+                    if (!input) {
+                        return;
+                    }
+
+                    const position = selectedOrder.indexOf(checkbox.value);
+
+                    input.value = position === -1 ? '' : String(position + 1);
+                });
+            };
+
+            checkboxes.forEach((checkbox) => {
+                checkbox.addEventListener('change', () => {
+                    selectedOrder = selectedOrder.filter((organId) => organId !== checkbox.value);
+
+                    if (checkbox.checked) {
+                        selectedOrder.push(checkbox.value);
+                    }
+
+                    syncOrders();
+                });
+            });
+
+            syncOrders();
+        });
+    </script>
 {% endblock %}

@@ -23,9 +23,9 @@ class Organs
     #[ORM\Column]
     private ?bool $paried = null;
 
-    #[ORM\ManyToOne(inversedBy: 'organs')]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    private ?UltrasoundType $ultrasound_type = null;
+    #[ORM\Column(length: 20, options: ['default' => 'any'])]
+    #[Assert\Choice(choices: ['male', 'female', 'any'], message: 'Alegeți aplicabilitatea corectă după sex.')]
+    private string $gender_applicability = 'any';
 
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $image_path = null;
@@ -40,6 +40,13 @@ class Organs
     #[ORM\OrderBy(['sortOrder' => 'ASC'])]
     private Collection $organParameters;
 
+    /**
+     * @var Collection<int, UltrasoundTypeOrgan>
+     */
+    #[ORM\OneToMany(mappedBy: 'organ', targetEntity: UltrasoundTypeOrgan::class, cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OrderBy(['sortOrder' => 'ASC'])]
+    private Collection $ultrasoundTypeOrgans;
+
     #[ORM\Column]
     private ?\DateTimeImmutable $created_at = null;
 
@@ -49,6 +56,7 @@ class Organs
     public function __construct()
     {
         $this->organParameters = new ArrayCollection();
+        $this->ultrasoundTypeOrgans = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -80,14 +88,14 @@ class Organs
         return $this;
     }
 
-    public function getUltrasoundType(): ?UltrasoundType
+    public function getGenderApplicability(): string
     {
-        return $this->ultrasound_type;
+        return $this->gender_applicability;
     }
 
-    public function setUltrasoundType(?UltrasoundType $ultrasound_type): static
+    public function setGenderApplicability(string $gender_applicability): static
     {
-        $this->ultrasound_type = $ultrasound_type;
+        $this->gender_applicability = $gender_applicability;
 
         return $this;
     }
@@ -203,6 +211,31 @@ class Organs
     public function setUpdatedAt(\DateTimeImmutable $updated_at): static
     {
         $this->updated_at = $updated_at;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UltrasoundTypeOrgan>
+     */
+    public function getUltrasoundTypeOrgans(): Collection
+    {
+        return $this->ultrasoundTypeOrgans;
+    }
+
+    public function addUltrasoundTypeOrgan(UltrasoundTypeOrgan $ultrasoundTypeOrgan): static
+    {
+        if (!$this->ultrasoundTypeOrgans->contains($ultrasoundTypeOrgan)) {
+            $this->ultrasoundTypeOrgans->add($ultrasoundTypeOrgan);
+            $ultrasoundTypeOrgan->setOrgan($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUltrasoundTypeOrgan(UltrasoundTypeOrgan $ultrasoundTypeOrgan): static
+    {
+        $this->ultrasoundTypeOrgans->removeElement($ultrasoundTypeOrgan);
 
         return $this;
     }

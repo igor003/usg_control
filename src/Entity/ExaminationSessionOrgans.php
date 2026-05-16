@@ -165,7 +165,9 @@ class ExaminationSessionOrgans
 
     public function removeParameterResult(ExaminationSessionParameterResults $parameter_result): static
     {
-        $this->parameter_results->removeElement($parameter_result);
+        if ($this->parameter_results->removeElement($parameter_result) && $parameter_result->getSessionOrgan() === $this) {
+            $parameter_result->setSessionOrgan(null);
+        }
 
         return $this;
     }

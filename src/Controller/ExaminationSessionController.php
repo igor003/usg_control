@@ -6,6 +6,7 @@ use App\Entity\Organs;
 use App\Entity\OrganParameters;
 use App\Entity\Parameters;
 use App\Entity\Patients;
+use App\Entity\UltrasoundType;
 use App\Entity\ExaminationSessionOrgans;
 use App\Entity\ExaminationSessionParameterResults;
 use App\Entity\ExaminationSessions;
@@ -13,10 +14,12 @@ use App\Repository\ExaminationSessionsRepository;
 use App\Repository\OrgansRepository;
 use App\Repository\ParametersRepository;
 use App\Repository\PatientsRepository;
+use App\Repository\UltrasoundTypeRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -29,6 +32,8 @@ final class ExaminationSessionController extends AbstractController
             ->createQueryBuilder('s')
             ->leftJoin('s.patient', 'p')
             ->addSelect('p')
+            ->leftJoin('s.ultrasound_type', 'sut')
+            ->addSelect('sut')
             ->leftJoin('p.city', 'c')
             ->addSelect('c')
             ->leftJoin('c.district', 'd')
@@ -52,7 +57,12 @@ final class ExaminationSessionController extends AbstractController
     }
 
     #[Route('/sessions/{id}', name: 'app_sessions_show', methods: ['GET'])]
-    public function show(ExaminationSessions $session, ExaminationSessionsRepository $examinationSessionsRepository): Response
+    public function show(
+        ExaminationSessions $session,
+        ExaminationSessionsRepository $examinationSessionsRepository,
+        OrgansRepository $organsRepository,
+        UltrasoundTypeRepository $ultrasoundTypeRepository,
+    ): Response
     {
         $session = $this->findSessionWithResults($examinationSessionsRepository, (int) $session->getId());
 
@@ -60,9 +70,27 @@ final class ExaminationSessionController extends AbstractController
             throw $this->createNotFoundException('Sesiunea nu a fost găsită.');
         }
 
-        return $this->render('sessions/show.html.twig', [
-            'session' => $session,
-        ]);
+        return $this->renderSessionStartPage($organsRepository, $ultrasoundTypeRepository, $session);
+    }
+
+    #[Route('/sessions/{id}/delete', name: 'app_sessions_delete', methods: ['POST'])]
+    public function delete(
+        ExaminationSessions $session,
+        Request $request,
+        EntityManagerInterface $entityManager,
+    ): RedirectResponse {
+        if (!$this->isCsrfTokenValid('delete_session_' . $session->getId(), (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'Confirmarea ștergerii nu este validă.');
+
+            return $this->redirectToRoute('app_sessions_index');
+        }
+
+        $entityManager->remove($session);
+        $entityManager->flush();
+
+        $this->addFlash('success', 'Sesiunea a fost ștearsă cu succes.');
+
+        return $this->redirectToRoute('app_sessions_index');
     }
 
     #[Route('/raport', name: 'app_report_index', methods: ['GET'])]
@@ -104,53 +132,22 @@ final class ExaminationSessionController extends AbstractController
     }
 
     #[Route('/session/start', name: 'app_session_start', methods: ['GET'])]
-    public function start(OrgansRepository $organsRepository): Response
+    public function start(
+        OrgansRepository $organsRepository,
+        UltrasoundTypeRepository $ultrasoundTypeRepository,
+    ): Response
     {
-        $organs = array_map(
-            fn (Organs $organ): array => [
-                'id' => $organ->getId(),
-                'name' => $organ->getName() ?? '',
-                'paired' => $organ->isParied(),
-                'imagePath' => $this->resolveOrganImagePath($organ),
-                'parameters' => array_map(
-                    static fn (OrganParameters $organParameter): array => [
-                        'id' => $organParameter->getParameter()?->getId(),
-                        'name' => $organParameter->getParameter()?->getName() ?? '',
-                        'valueType' => $organParameter->getParameter()?->getValueType() ?? 'text',
-                        'valueContent' => array_values($organParameter->getParameter()?->getValueContent() ?? []),
-                        'sortOrder' => $organParameter->getSortOrder(),
-                    ],
-                    array_values(array_filter(
-                        $organ->getOrganParameters()->toArray(),
-                        static fn (OrganParameters $organParameter): bool => $organParameter->getParameter() instanceof Parameters,
-                    )),
-                ),
-            ],
-            $organsRepository
-                ->createQueryBuilder('o')
-                ->leftJoin('o.organParameters', 'op')
-                ->addSelect('op')
-                ->leftJoin('op.parameter', 'p')
-                ->addSelect('p')
-                ->orderBy('o.sort_order', 'ASC')
-                ->addOrderBy('o.name', 'ASC')
-                ->addOrderBy('op.sortOrder', 'ASC')
-                ->addOrderBy('p.name', 'ASC')
-                ->getQuery()
-                ->getResult(),
-        );
-
-        return $this->render('session/start.html.twig', [
-            'organs' => $organs,
-        ]);
+        return $this->renderSessionStartPage($organsRepository, $ultrasoundTypeRepository);
     }
 
     #[Route('/session/save', name: 'app_session_save', methods: ['POST'])]
     public function save(
         Request $request,
+        ExaminationSessionsRepository $examinationSessionsRepository,
         PatientsRepository $patientsRepository,
         OrgansRepository $organsRepository,
         ParametersRepository $parametersRepository,
+        UltrasoundTypeRepository $ultrasoundTypeRepository,
         EntityManagerInterface $entityManager,
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
@@ -162,6 +159,8 @@ final class ExaminationSessionController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        $sessionId = (int) ($data['sessionId'] ?? 0);
+        $isEditing = $sessionId > 0;
         $isIncognito = (bool) ($data['isIncognito'] ?? false);
         $patient = null;
 
@@ -195,12 +194,35 @@ final class ExaminationSessionController extends AbstractController
             'id' => $this->collectParameterIds($organsData),
         ]));
         $now = new \DateTimeImmutable();
-        $session = (new ExaminationSessions())
+        $ultrasoundTypeId = (int) ($data['ultrasoundTypeId'] ?? 0);
+        $ultrasoundType = $ultrasoundTypeId > 0 ? $ultrasoundTypeRepository->find($ultrasoundTypeId) : null;
+        $session = $isEditing ? $examinationSessionsRepository->find($sessionId) : null;
+
+        if ($isEditing && !$session instanceof ExaminationSessions) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Sesiunea pentru editare nu a fost găsită.',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        if (!$session instanceof ExaminationSessions) {
+            $session = (new ExaminationSessions())
+                ->setSessionDate($now)
+                ->setCreatedAt($now)
+            ;
+        } else {
+            foreach ($session->getSessionOrgans()->toArray() as $existingSessionOrgan) {
+                if ($existingSessionOrgan instanceof ExaminationSessionOrgans) {
+                    $session->removeSessionOrgan($existingSessionOrgan);
+                }
+            }
+        }
+
+        $session
             ->setPatient($patient ?: null)
-            ->setSessionDate($now)
+            ->setUltrasoundType($ultrasoundType instanceof UltrasoundType ? $ultrasoundType : null)
             ->setSessionNote($this->normalizeNullableString($data['sessionNote'] ?? null))
             ->setSessionConclusion($this->normalizeNullableString($data['sessionConclusion'] ?? null))
-            ->setCreatedAt($now)
             ->setUpdatedAt($now)
         ;
 
@@ -277,17 +299,150 @@ final class ExaminationSessionController extends AbstractController
 
         return $this->json([
             'success' => true,
-            'message' => 'Formularul a fost salvat cu succes.',
+            'message' => $isEditing ? 'Formularul a fost actualizat cu succes.' : 'Formularul a fost salvat cu succes.',
             'sessionId' => $session->getId(),
             'printUrl' => $this->generateUrl('app_session_print', [
                 'id' => $session->getId(),
                 'auto_print' => 1,
             ]),
             'redirectUrl' => $this->generateUrl('app_sessions_index', [
-                'created' => $session->getId(),
+                $isEditing ? 'updated' : 'created' => $session->getId(),
                 'print' => $session->getId(),
             ]),
         ]);
+    }
+
+    private function renderSessionStartPage(
+        OrgansRepository $organsRepository,
+        UltrasoundTypeRepository $ultrasoundTypeRepository,
+        ?ExaminationSessions $session = null,
+    ): Response {
+        return $this->render('session/start.html.twig', [
+            'organs' => $this->buildSessionStartOrgans($organsRepository),
+            'ultrasoundTypes' => $this->buildSessionStartUltrasoundTypes($ultrasoundTypeRepository),
+            'initialSession' => $session ? $this->buildEditableSessionData($session) : null,
+            'isEditMode' => $session instanceof ExaminationSessions,
+        ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildSessionStartOrgans(OrgansRepository $organsRepository): array
+    {
+        return array_map(
+            fn (Organs $organ): array => [
+                'id' => $organ->getId(),
+                'name' => $organ->getName() ?? '',
+                'paired' => $organ->isParied(),
+                'genderApplicability' => $organ->getGenderApplicability(),
+                'imagePath' => $this->resolveOrganImagePath($organ),
+                'parameters' => array_map(
+                    static fn (OrganParameters $organParameter): array => [
+                        'id' => $organParameter->getParameter()?->getId(),
+                        'name' => $organParameter->getParameter()?->getName() ?? '',
+                        'valueType' => $organParameter->getParameter()?->getValueType() ?? 'text',
+                        'valueContent' => array_values($organParameter->getParameter()?->getValueContent() ?? []),
+                        'sortOrder' => $organParameter->getSortOrder(),
+                    ],
+                    array_values(array_filter(
+                        $organ->getOrganParameters()->toArray(),
+                        static fn (OrganParameters $organParameter): bool => $organParameter->getParameter() instanceof Parameters,
+                    )),
+                ),
+            ],
+            $organsRepository
+                ->createQueryBuilder('o')
+                ->leftJoin('o.organParameters', 'op')
+                ->addSelect('op')
+                ->leftJoin('op.parameter', 'p')
+                ->addSelect('p')
+                ->orderBy('o.sort_order', 'ASC')
+                ->addOrderBy('o.name', 'ASC')
+                ->addOrderBy('op.sortOrder', 'ASC')
+                ->addOrderBy('p.name', 'ASC')
+                ->getQuery()
+                ->getResult(),
+        );
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildSessionStartUltrasoundTypes(UltrasoundTypeRepository $ultrasoundTypeRepository): array
+    {
+        return array_map(
+            static fn (UltrasoundType $ultrasoundType): array => [
+                'id' => $ultrasoundType->getId(),
+                'name' => $ultrasoundType->getName() ?? '',
+                'organIds' => array_values(array_map(
+                    static fn ($link): int => (int) $link->getOrgan()?->getId(),
+                    array_filter(
+                        $ultrasoundType->getUltrasoundTypeOrgans()->toArray(),
+                        static fn ($link): bool => $link->getOrgan() instanceof Organs,
+                    ),
+                )),
+            ],
+            $ultrasoundTypeRepository
+                ->createQueryBuilder('ut')
+                ->leftJoin('ut.ultrasoundTypeOrgans', 'uto')
+                ->addSelect('uto')
+                ->leftJoin('uto.organ', 'o')
+                ->addSelect('o')
+                ->orderBy('ut.sort_order', 'ASC')
+                ->addOrderBy('ut.name', 'ASC')
+                ->addOrderBy('uto.sortOrder', 'ASC')
+                ->getQuery()
+                ->getResult(),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildEditableSessionData(ExaminationSessions $session): array
+    {
+        $selectedOrganIds = [];
+        $sessionOrgans = [];
+
+        foreach ($session->getSessionOrgans() as $sessionOrgan) {
+            if (!$sessionOrgan instanceof ExaminationSessionOrgans) {
+                continue;
+            }
+
+            $organId = (int) ($sessionOrgan->getOrgan()?->getId() ?? 0);
+
+            if ($organId > 0 && !in_array($organId, $selectedOrganIds, true)) {
+                $selectedOrganIds[] = $organId;
+            }
+
+            $sessionOrgans[] = [
+                'organId' => $organId,
+                'side' => $sessionOrgan->getSide() ?? 'single',
+                'note' => $sessionOrgan->getOrganNote(),
+                'parameters' => array_map(
+                    static fn (ExaminationSessionParameterResults $result): array => [
+                        'parameterId' => (int) ($result->getParameter()?->getId() ?? 0),
+                        'value' => $result->getValue(),
+                    ],
+                    array_values(array_filter(
+                        $sessionOrgan->getParameterResults()->toArray(),
+                        static fn ($result): bool => $result instanceof ExaminationSessionParameterResults,
+                    )),
+                ),
+            ];
+        }
+
+        return [
+            'id' => $session->getId(),
+            'isIncognito' => $session->getPatient() === null,
+            'patient' => $session->getPatient() instanceof Patients ? $this->patientToArray($session->getPatient()) : null,
+            'ultrasoundTypeId' => $session->getUltrasoundType()?->getId(),
+            'sessionNote' => $session->getSessionNote(),
+            'sessionConclusion' => $session->getSessionConclusion(),
+            'selectedOrganIds' => $selectedOrganIds,
+            'organs' => $sessionOrgans,
+        ];
     }
 
     /**
@@ -299,6 +454,8 @@ final class ExaminationSessionController extends AbstractController
             ->createQueryBuilder('s')
             ->leftJoin('s.patient', 'p')
             ->addSelect('p')
+            ->leftJoin('s.ultrasound_type', 'sut')
+            ->addSelect('sut')
             ->leftJoin('p.city', 'c')
             ->addSelect('c')
             ->leftJoin('c.district', 'd')
@@ -335,6 +492,7 @@ final class ExaminationSessionController extends AbstractController
         $city = $patient?->getCity();
         $district = $city?->getDistrict();
         $examinationTypes = [];
+        $selectedUltrasoundType = $session->getUltrasoundType();
 
         foreach ($session->getSessionOrgans() as $sessionOrgan) {
             if (!$sessionOrgan instanceof ExaminationSessionOrgans) {
@@ -354,7 +512,7 @@ final class ExaminationSessionController extends AbstractController
         $filters = [
             $sessionDate?->format('d.m.Y H:i') ?? '',
             $patient ? trim((string) $patient->getLastName() . ' ' . (string) $patient->getFirstName()) : '',
-            implode(' ', $examinationTypes),
+            $selectedUltrasoundType?->getName() ?? implode(' ', $examinationTypes),
             $patient && $patient->isBeneficiary() ? 'Da' : 'Nu',
             $district?->getName() ?? '',
             $city?->getName() ?? '',
@@ -369,7 +527,7 @@ final class ExaminationSessionController extends AbstractController
             'export' => [
                 $filters[0],
                 $filters[1],
-                implode(', ', $examinationTypes),
+                $selectedUltrasoundType?->getName() ?? implode(', ', $examinationTypes),
                 $filters[3],
                 $filters[4],
                 $filters[5],
@@ -747,6 +905,7 @@ final class ExaminationSessionController extends AbstractController
             'firstName' => $patient->getFirstName(),
             'lastName' => $patient->getLastName(),
             'gender' => $this->formatGender($patient->getGender()),
+            'genderCode' => $patient->getGender(),
             'birthYear' => $patient->getBirthYear(),
             'phone' => $patient->getPhone(),
             'idnp' => $patient->getIdnp(),
@@ -826,6 +985,8 @@ final class ExaminationSessionController extends AbstractController
             ->createQueryBuilder('s')
             ->leftJoin('s.patient', 'p')
             ->addSelect('p')
+            ->leftJoin('s.ultrasound_type', 'sut')
+            ->addSelect('sut')
             ->leftJoin('p.city', 'c')
             ->addSelect('c')
             ->leftJoin('c.district', 'd')
@@ -834,8 +995,6 @@ final class ExaminationSessionController extends AbstractController
             ->addSelect('so')
             ->leftJoin('so.organ', 'o')
             ->addSelect('o')
-            ->leftJoin('o.ultrasound_type', 'ut')
-            ->addSelect('ut')
             ->leftJoin('so.parameter_results', 'pr')
             ->addSelect('pr')
             ->andWhere('s.id = :id')

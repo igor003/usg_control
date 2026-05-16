@@ -6,6 +6,7 @@ use App\Repository\PatientsRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: PatientsRepository::class)]
 #[UniqueEntity(fields: ['idnp'], message: 'Există deja un pacient cu acest IDNP.', errorPath: 'idnp')]
@@ -32,11 +33,6 @@ class Patients
     private ?string $gender = null;
 
     #[ORM\Column(nullable: true)]
-    #[Assert\Range(
-        min: 1900,
-        max: 2026,
-        notInRangeMessage: 'Anul nașterii trebuie să fie între {{ min }} și {{ max }}.'
-    )]
     private ?int $birth_year = null;
 
     #[ORM\Column(length: 40, nullable: true)]
@@ -223,5 +219,27 @@ class Patients
         $this->beneficiary = $beneficiary;
 
         return $this;
+    }
+
+    #[Assert\Callback]
+    public function validateBirthYear(ExecutionContextInterface $context): void
+    {
+        if ($this->birth_year === null) {
+            return;
+        }
+
+        $currentYear = $this->getCurrentYear();
+
+        if ($this->birth_year < 1900 || $this->birth_year > $currentYear) {
+            $context->buildViolation('Anul nașterii trebuie să fie între 1900 și {{ max }}.')
+                ->setParameter('{{ max }}', (string) $currentYear)
+                ->atPath('birthYear')
+                ->addViolation();
+        }
+    }
+
+    private function getCurrentYear(): int
+    {
+        return (int) (new \DateTimeImmutable())->format('Y');
     }
 }

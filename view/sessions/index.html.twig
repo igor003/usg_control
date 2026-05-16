@@ -59,44 +59,70 @@
 
         .sessions-table th:nth-child(5),
         .sessions-table td:nth-child(5) {
-            width: 8%;
+            width: 10%;
         }
 
         .sessions-table th:nth-child(6),
         .sessions-table td:nth-child(6) {
-            width: 12%;
+            width: 8%;
         }
 
         .sessions-table th:nth-child(7),
         .sessions-table td:nth-child(7) {
-            width: 18%;
+            width: 12%;
         }
 
         .sessions-table th:nth-child(8),
         .sessions-table td:nth-child(8) {
-            width: 10%;
+            width: 18%;
         }
 
         .sessions-table th:nth-child(9),
         .sessions-table td:nth-child(9) {
-            width: 9%;
+            width: 10%;
         }
 
         .sessions-table th:nth-child(10),
         .sessions-table td:nth-child(10) {
-            width: 4%;
+            width: 9%;
+        }
+
+        .sessions-table th:nth-child(11),
+        .sessions-table td:nth-child(11) {
+            width: 7%;
         }
 
         .session-actions {
             display: flex;
-            flex-direction: column;
-            gap: .35rem;
-            align-items: stretch;
+            flex-wrap: nowrap;
+            gap: .25rem;
+            align-items: center;
+            justify-content: flex-start;
         }
 
-        .session-actions .btn {
-            padding-right: .35rem;
-            padding-left: .35rem;
+        .session-actions .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.9rem;
+            height: 1.9rem;
+            padding: 0;
+        }
+
+        .session-actions .btn-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .session-delete-summary dt {
+            color: var(--bs-secondary-color);
+            font-size: .82rem;
+        }
+
+        .session-delete-summary dd {
+            margin-bottom: .55rem;
+            font-weight: 600;
+            overflow-wrap: anywhere;
         }
 
         .session-organs-preview {
@@ -130,6 +156,10 @@
 
         <div class="card border-0 shadow-sm">
             <div class="card-body p-2 p-lg-3">
+                {% for message in app.flashes('success') %}
+                    <div class="alert alert-success" role="alert">{{ message }}</div>
+                {% endfor %}
+
                 {% if createdSessionId %}
                     <div class="alert alert-success d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2" role="alert">
                         <span>Sesiunea a fost salvată cu succes.</span>
@@ -138,6 +168,19 @@
                         {% endif %}
                     </div>
                 {% endif %}
+
+                {% if app.request.query.getInt('updated') %}
+                    <div class="alert alert-success d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2" role="alert">
+                        <span>Sesiunea a fost actualizată cu succes.</span>
+                        {% if printSessionId %}
+                            <a class="btn btn-sm btn-outline-success" href="{{ path('app_session_print', { id: printSessionId }) }}" target="_blank" rel="noopener">Deschide formular A4</a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% for message in app.flashes('danger') %}
+                    <div class="alert alert-danger" role="alert">{{ message }}</div>
+                {% endfor %}
 
                 {% if sessions is empty %}
                     <p class="mb-0 text-secondary">Nu există sesiuni salvate.</p>
@@ -161,6 +204,7 @@
                                     <th>Pacient</th>
                                     <th>IDNP</th>
                                     <th>Telefon</th>
+                                    <th>Tip USG</th>
                                     <th>Localitatea</th>
                                     <th>Organe</th>
                                     <th>Notă</th>
@@ -173,16 +217,18 @@
                                     <th><input class="form-control" type="search" aria-label="Filtru după pacient" data-session-table-filter data-column="2"></th>
                                     <th><input class="form-control" type="search" aria-label="Filtru după IDNP" data-session-table-filter data-column="3"></th>
                                     <th><input class="form-control" type="search" aria-label="Filtru după telefon" data-session-table-filter data-column="4"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după localitate" data-session-table-filter data-column="5"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după organe" data-session-table-filter data-column="6"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după notă" data-session-table-filter data-column="7"></th>
-                                    <th><input class="form-control" type="search" aria-label="Filtru după concluzie" data-session-table-filter data-column="8"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după tip UZI" data-session-table-filter data-column="5"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după localitate" data-session-table-filter data-column="6"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după organe" data-session-table-filter data-column="7"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după notă" data-session-table-filter data-column="8"></th>
+                                    <th><input class="form-control" type="search" aria-label="Filtru după concluzie" data-session-table-filter data-column="9"></th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for session in sessions %}
                                     {% set patient = session.patient %}
+                                    {% set ultrasoundType = session.ultrasoundType %}
                                     {% set city = patient ? patient.city : null %}
                                     {% set district = city ? city.district : null %}
                                     {% set organLabels = [] %}
@@ -204,6 +250,7 @@
                                         </td>
                                         <td data-filter-value="{{ patient and patient.idnp ? patient.idnp : '' }}">{{ patient and patient.idnp ? patient.idnp : '-' }}</td>
                                         <td data-filter-value="{{ patient and patient.phone ? patient.phone : '' }}">{{ patient and patient.phone ? patient.phone : '-' }}</td>
+                                        <td data-filter-value="{{ ultrasoundType ? ultrasoundType.name : '' }}">{{ ultrasoundType ? ultrasoundType.name : '-' }}</td>
                                         <td data-filter-value="{{ city ? city.name ~ ' ' ~ (district ? district.name : '') : '' }}">
                                             {% if city %}
                                                 {{ city.name }}{% if district %}, {{ district.name }}{% endif %}
@@ -222,14 +269,61 @@
                                         </td>
                                         <td data-filter-value="">
                                             <div class="session-actions">
-                                                <a class="btn btn-sm btn-outline-primary" href="{{ path('app_sessions_show', { id: session.id }) }}">Vezi</a>
-                                                <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_session_print', { id: session.id }) }}" target="_blank" rel="noopener">A4</a>
+                                                <a
+                                                    class="btn btn-sm btn-outline-primary btn-icon"
+                                                    href="{{ path('app_sessions_show', { id: session.id }) }}"
+                                                    title="Editează"
+                                                    aria-label="Editează"
+                                                >
+                                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M12 20h9"></path>
+                                                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                                                    </svg>
+                                                </a>
+                                                <a
+                                                    class="btn btn-sm btn-outline-secondary btn-icon"
+                                                    href="{{ path('app_session_print', { id: session.id }) }}"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    title="Print A4"
+                                                    aria-label="Print A4"
+                                                >
+                                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M6 9V2h12v7"></path>
+                                                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                                        <path d="M6 14h12v8H6z"></path>
+                                                    </svg>
+                                                </a>
+                                                <button
+                                                    class="btn btn-sm btn-outline-danger btn-icon"
+                                                    type="button"
+                                                    title="Șterge"
+                                                    aria-label="Șterge"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#sessionDeleteModal"
+                                                    data-session-delete-trigger
+                                                    data-delete-url="{{ path('app_sessions_delete', { id: session.id }) }}"
+                                                    data-delete-token="{{ csrf_token('delete_session_' ~ session.id) }}"
+                                                    data-session-id="{{ session.id }}"
+                                                    data-session-date="{{ session.sessionDate ? session.sessionDate|date('d.m.Y H:i') : '-' }}"
+                                                    data-session-patient="{{ patient ? patient.lastName ~ ' ' ~ patient.firstName : 'Pacient incognito' }}"
+                                                    data-session-type="{{ ultrasoundType ? ultrasoundType.name : '-' }}"
+                                                    data-session-organs="{{ organLabels|join(', ') ?: '-' }}"
+                                                >
+                                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M3 6h18"></path>
+                                                        <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path>
+                                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                                                        <path d="M10 11v6"></path>
+                                                        <path d="M14 11v6"></path>
+                                                    </svg>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
                                 {% endfor %}
                                 <tr data-session-table-empty hidden>
-                                    <td class="text-center text-secondary py-4" colspan="10">Nu au fost găsite sesiuni pentru filtrele selectate.</td>
+                                    <td class="text-center text-secondary py-4" colspan="11">Nu au fost găsite sesiuni pentru filtrele selectate.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -238,6 +332,39 @@
             </div>
         </div>
     </main>
+
+    <div class="modal fade" id="sessionDeleteModal" tabindex="-1" aria-labelledby="sessionDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="sessionDeleteModalLabel">Confirmați ștergerea sesiunii</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Închide"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Sesiunea va fi ștearsă definitiv împreună cu rezultatele salvate.</p>
+                    <dl class="session-delete-summary mb-0">
+                        <dt>ID</dt>
+                        <dd data-session-delete-id>-</dd>
+                        <dt>Data</dt>
+                        <dd data-session-delete-date>-</dd>
+                        <dt>Pacient</dt>
+                        <dd data-session-delete-patient>-</dd>
+                        <dt>Tip USG</dt>
+                        <dd data-session-delete-type>-</dd>
+                        <dt>Organe</dt>
+                        <dd data-session-delete-organs>-</dd>
+                    </dl>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Anulează</button>
+                    <form method="post" data-session-delete-form>
+                        <input type="hidden" name="_token" value="">
+                        <button type="submit" class="btn btn-danger">Șterge sesiunea</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block javascripts %}
@@ -317,5 +444,51 @@
 
             applyFilters();
         });
+
+        const sessionDeleteModal = document.getElementById('sessionDeleteModal');
+
+        if (sessionDeleteModal) {
+            const deleteForm = sessionDeleteModal.querySelector('[data-session-delete-form]');
+            const deleteToken = deleteForm ? deleteForm.querySelector('input[name="_token"]') : null;
+            const summaryFields = {
+                id: sessionDeleteModal.querySelector('[data-session-delete-id]'),
+                date: sessionDeleteModal.querySelector('[data-session-delete-date]'),
+                patient: sessionDeleteModal.querySelector('[data-session-delete-patient]'),
+                type: sessionDeleteModal.querySelector('[data-session-delete-type]'),
+                organs: sessionDeleteModal.querySelector('[data-session-delete-organs]'),
+            };
+
+            document.querySelectorAll('[data-session-delete-trigger]').forEach((button) => {
+                button.addEventListener('click', () => {
+                    if (deleteForm) {
+                        deleteForm.action = button.dataset.deleteUrl || '';
+                    }
+
+                    if (deleteToken) {
+                        deleteToken.value = button.dataset.deleteToken || '';
+                    }
+
+                    if (summaryFields.id) {
+                        summaryFields.id.textContent = button.dataset.sessionId || '-';
+                    }
+
+                    if (summaryFields.date) {
+                        summaryFields.date.textContent = button.dataset.sessionDate || '-';
+                    }
+
+                    if (summaryFields.patient) {
+                        summaryFields.patient.textContent = button.dataset.sessionPatient || '-';
+                    }
+
+                    if (summaryFields.type) {
+                        summaryFields.type.textContent = button.dataset.sessionType || '-';
+                    }
+
+                    if (summaryFields.organs) {
+                        summaryFields.organs.textContent = button.dataset.sessionOrgans || '-';
+                    }
+                });
+            });
+        }
     </script>
 {% endblock %}

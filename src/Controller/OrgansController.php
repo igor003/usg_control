@@ -165,12 +165,14 @@ final class OrgansController extends AbstractController
     {
         return $organsRepository
             ->createQueryBuilder('o')
-            ->leftJoin('o.ultrasound_type', 'ut')
+            ->leftJoin('o.ultrasoundTypeOrgans', 'uto')
+            ->addSelect('uto')
+            ->leftJoin('uto.ultrasoundType', 'ut')
             ->addSelect('ut')
-            ->orderBy('ut.sort_order', 'ASC')
-            ->addOrderBy('ut.name', 'ASC')
-            ->addOrderBy('o.sort_order', 'ASC')
+            ->orderBy('o.sort_order', 'ASC')
             ->addOrderBy('o.name', 'ASC')
+            ->addOrderBy('ut.sort_order', 'ASC')
+            ->addOrderBy('ut.name', 'ASC')
             ->addOrderBy('o.id', 'ASC')
             ->getQuery()
             ->getResult()

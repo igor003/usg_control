@@ -1,14 +1,38 @@
 $(function () {
+    const $main = $('main[data-save-session-url]');
+
+    if ($main.length === 0) {
+        return;
+    }
+
+    let initialSessionData = null;
+
+    try {
+        initialSessionData = $main.attr('data-initial-session')
+            ? JSON.parse($main.attr('data-initial-session'))
+            : null;
+    } catch (error) {
+        initialSessionData = null;
+    }
+
+    const isEditMode = $main.data('is-edit-mode').toString() === '1';
     const sessionState = {
         patient: null,
         selectedOrgans: new Map(),
         isIncognito: false,
+        formValues: {},
+        isHydratingInitialSession: false,
+        editSessionId: initialSessionData && initialSessionData.id ? Number(initialSessionData.id) : null,
     };
 
-    const $main = $('main[data-save-session-url]');
     const $patientBlock = $('#sesion_user_info');
     const $idnpInput = $('#session_idnp');
+    const $idnpMessage = $('[data-idnp-message]');
     const $patientNameInput = $('#session_patient_name');
+    const $patientNameMessage = $('[data-patient-name-message]');
+    const $patientNameResults = $('[data-patient-name-results]');
+    const $addPatientLink = $('[data-add-patient-link]');
+    const $patientSummary = $('[data-patient-summary]');
     const $incognitoPatient = $('[data-patient-incognito]');
     const $imageSection = $('#image_section_image');
     const $organCards = $('.organ-card');
@@ -16,8 +40,29 @@ $(function () {
     const $showExaminationFormButton = $('[data-show-examination-form]');
     const $examinationForm = $('[data-examination-form]');
     const $examinationFormContent = $('[data-examination-form-content]');
+    const $ultrasoundTypeSelect = $('[data-ultrasound-type-select]');
+    const $selectedContainer = $('[data-selected-organs]');
+    const $selectedCount = $('[data-selected-count]');
     const saveSessionUrl = $main.data('save-session-url');
     const sessionsIndexUrl = $main.data('sessions-index-url');
+    const patientSearchUrl = $patientBlock.data('patient-search-url');
+    const patientNameSearchUrl = $patientBlock.data('patient-name-search-url');
+    const newPatientUrl = $patientBlock.data('new-patient-url');
+    const patientFields = {
+        fullName: $('[data-patient-field="fullName"]'),
+        gender: $('[data-patient-field="gender"]'),
+        birthYear: $('[data-patient-field="birthYear"]'),
+        phone: $('[data-patient-field="phone"]'),
+        idnp: $('[data-patient-field="idnp"]'),
+        seria: $('[data-patient-field="seria"]'),
+        district: $('[data-patient-field="district"]'),
+        city: $('[data-patient-field="city"]'),
+        address: $('[data-patient-field="address"]'),
+        beneficiary: $('[data-patient-field="beneficiary"]'),
+    };
+    let idnpRequestId = 0;
+    let patientNameRequestId = 0;
+    let patientNameSearchTimer = null;
 
     function hasPatientAccess() {
         if (sessionState.isIncognito) {
@@ -31,11 +76,123 @@ $(function () {
         return $patientNameInput.length === 0 || $.trim($patientNameInput.val()) !== '';
     }
 
+    function hideExaminationForm() {
+        $examinationForm.prop('hidden', true);
+        $examinationFormContent.empty();
+    }
+
     function setStartButtonDisabled(isDisabled) {
         $showExaminationFormButton
             .toggleClass('disabled', isDisabled)
             .prop('disabled', isDisabled)
             .attr('aria-disabled', isDisabled ? 'true' : 'false');
+    }
+
+    function renderSelectedOrgans() {
+        $selectedContainer.empty();
+        $selectedCount.text(sessionState.selectedOrgans.size.toString());
+
+        if (sessionState.selectedOrgans.size === 0) {
+            $('<span>', {
+                class: 'text-secondary',
+                text: 'Niciun organ selectat.',
+            }).appendTo($selectedContainer);
+
+            return;
+        }
+
+        sessionState.selectedOrgans.forEach(function (organ) {
+            $('<span>', {
+                class: 'badge text-bg-primary',
+                text: organ.name,
+            }).appendTo($selectedContainer);
+        });
+    }
+
+    function getActivePatientGender() {
+        if (sessionState.isIncognito || sessionState.patient === null) {
+            return null;
+        }
+
+        return sessionState.patient.genderCode || null;
+    }
+
+    function organMatchesPatientGender(genderApplicability) {
+        const patientGender = getActivePatientGender();
+
+        if (patientGender === null || genderApplicability === 'any') {
+            return true;
+        }
+
+        return genderApplicability === patientGender;
+    }
+
+    function persistCurrentFormValues() {
+        if ($examinationForm.prop('hidden')) {
+            return;
+        }
+
+        const $currentForm = $examinationFormContent.find('form').first();
+
+        if ($currentForm.length === 0) {
+            return;
+        }
+
+        $currentForm.find('input, select, textarea').each(function () {
+            const $field = $(this);
+            const fieldKey = $field.attr('name') || $field.attr('id');
+
+            if (!fieldKey) {
+                return;
+            }
+
+            sessionState.formValues[fieldKey] = $field.val();
+        });
+    }
+
+    function refreshOrganAvailability() {
+        if (!hasPatientAccess()) {
+            $organCards
+                .removeClass('is-gender-disabled')
+                .prop('disabled', true)
+                .attr('aria-disabled', 'true');
+
+            return;
+        }
+
+        const incompatibleSelectedIds = [];
+
+        $organCards.each(function () {
+            const $card = $(this);
+            const genderApplicability = ($card.data('organ-gender-applicability') || 'any').toString();
+            const isAvailable = organMatchesPatientGender(genderApplicability);
+            const id = $card.data('organ-id').toString();
+
+            $card
+                .toggleClass('is-gender-disabled', !isAvailable)
+                .prop('disabled', !isAvailable)
+                .attr('aria-disabled', !isAvailable ? 'true' : 'false');
+
+            if (!isAvailable && sessionState.selectedOrgans.has(id)) {
+                incompatibleSelectedIds.push(id);
+            }
+        });
+
+        incompatibleSelectedIds.forEach(function (id) {
+            sessionState.selectedOrgans.delete(id);
+            $organCards
+                .filter(`[data-organ-id="${id}"]`)
+                .removeClass('is-active')
+                .attr('aria-pressed', 'false');
+        });
+
+        if (incompatibleSelectedIds.length > 0) {
+            renderSelectedOrgans();
+        }
+
+        if (incompatibleSelectedIds.length > 0 && !$examinationForm.prop('hidden')) {
+            hideExaminationForm();
+        }
     }
 
     function setOrgansDisabled(isDisabled) {
@@ -50,18 +207,16 @@ $(function () {
         }
     }
 
-    function clearSelectedOrgans() {
+    function clearSelectedOrgans(resetFormValues = true) {
         sessionState.selectedOrgans.clear();
         $organCards.removeClass('is-active').attr('aria-pressed', 'false');
-        $('[data-selected-count]').text('0');
-        $('[data-selected-organs]')
-            .empty()
-            .append($('<span>', {
-                class: 'text-secondary',
-                text: 'Niciun organ selectat.',
-            }));
-        $examinationForm.prop('hidden', true);
-        $examinationFormContent.empty();
+
+        if (resetFormValues) {
+            sessionState.formValues = {};
+        }
+
+        renderSelectedOrgans();
+        hideExaminationForm();
     }
 
     function setPatientFocusState(isPatientFocused, focusTarget) {
@@ -91,24 +246,6 @@ $(function () {
         setOrgansDisabled(true);
     }
 
-    $incognitoPatient.on('change', function () {
-        const isChecked = $(this).is(':checked');
-        sessionState.isIncognito = isChecked;
-
-        if (isChecked) {
-            setPatientFocusState(false);
-            setOrgansDisabled(false);
-            updateFormActions();
-            return;
-        }
-
-        setPatientFocusState(true);
-        setStartButtonDisabled(true);
-        setOrgansDisabled(true);
-        clearSelectedOrgans();
-        updateFormActions();
-    });
-
     function updateFormActions() {
         const canShowForm = hasPatientAccess() && sessionState.selectedOrgans.size > 0;
 
@@ -116,8 +253,7 @@ $(function () {
         setStartButtonDisabled(!canShowForm);
 
         if (!canShowForm) {
-            $examinationForm.prop('hidden', true);
-            $examinationFormContent.empty();
+            hideExaminationForm();
         }
     }
 
@@ -125,9 +261,68 @@ $(function () {
         return value.toString().replace(/[^a-zA-Z0-9_-]/g, '_');
     }
 
+    function buildParameterFieldId(organId, parameterId, sideKey) {
+        return createSafeId(`organ_${organId}${sideKey ? `_${sideKey}` : ''}_parameter_${parameterId}`);
+    }
+
+    function buildNoteFieldId(organId, sideKey) {
+        return createSafeId(`organ_${organId}${sideKey ? `_${sideKey}` : ''}_note`);
+    }
+
+    function readOrganParametersFromCard($card) {
+        try {
+            return JSON.parse($card.attr('data-organ-parameters') || '[]');
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function createOrganStateFromCard($card) {
+        return {
+            id: $card.data('organ-id').toString(),
+            name: $card.data('organ-name'),
+            paired: $card.data('organ-paired').toString() === '1',
+            genderApplicability: ($card.data('organ-gender-applicability') || 'any').toString(),
+            imagePath: $card.data('organ-image-path'),
+            parameters: readOrganParametersFromCard($card),
+        };
+    }
+
+    function setSelectedOrgansByIds(organIds) {
+        sessionState.selectedOrgans.clear();
+        $organCards.removeClass('is-active').attr('aria-pressed', 'false');
+
+        organIds.forEach(function (organId) {
+            const $card = $organCards.filter(`[data-organ-id="${organId}"]`).first();
+
+            if ($card.length === 0 || $card.hasClass('is-gender-disabled') || $card.prop('disabled')) {
+                return;
+            }
+
+            const organState = createOrganStateFromCard($card);
+
+            $card.addClass('is-active').attr('aria-pressed', 'true');
+            sessionState.selectedOrgans.set(organState.id, organState);
+        });
+
+        renderSelectedOrgans();
+        updateFormActions();
+    }
+
+    function getOrganSides(organ) {
+        if (!organ.paired) {
+            return [null];
+        }
+
+        return [
+            { key: 'right', label: 'Dreapta' },
+            { key: 'left', label: 'Stânga' },
+        ];
+    }
+
     function createControlField(organ, parameter, side) {
-        const sideSuffix = side ? `_${side.key}` : '';
-        const fieldId = createSafeId(`organ_${organ.id}${sideSuffix}_parameter_${parameter.id}`);
+        const sideKey = side ? side.key : null;
+        const fieldId = buildParameterFieldId(organ.id, parameter.id, sideKey);
         const $fieldWrapper = $('<div>', { class: 'mb-3' });
 
         $('<label>', {
@@ -172,8 +367,7 @@ $(function () {
     }
 
     function createNoteField(organ, side) {
-        const sideSuffix = side ? `_${side.key}` : '';
-        const noteId = createSafeId(`organ_${organ.id}${sideSuffix}_note`);
+        const noteId = buildNoteFieldId(organ.id, side ? side.key : null);
         const $noteWrapper = $('<div>', { class: 'organ-note' });
 
         $('<label>', {
@@ -192,17 +386,6 @@ $(function () {
         return $noteWrapper;
     }
 
-    function getOrganSides(organ) {
-        if (!organ.paired) {
-            return [null];
-        }
-
-        return [
-            { key: 'right', label: 'Dreapta' },
-            { key: 'left', label: 'Stânga' },
-        ];
-    }
-
     function collectSessionPayload($form) {
         const formElement = $form.get(0);
         const organs = [];
@@ -210,9 +393,9 @@ $(function () {
         Array.from(sessionState.selectedOrgans.values()).forEach(function (organ, organIndex) {
             getOrganSides(organ).forEach(function (side) {
                 const sideKey = side ? side.key : null;
-                const noteId = createSafeId(`organ_${organ.id}${sideKey ? `_${sideKey}` : ''}_note`);
+                const noteId = buildNoteFieldId(organ.id, sideKey);
                 const parameters = organ.parameters.map(function (parameter, parameterIndex) {
-                    const fieldId = createSafeId(`organ_${organ.id}${sideKey ? `_${sideKey}` : ''}_parameter_${parameter.id}`);
+                    const fieldId = buildParameterFieldId(organ.id, parameter.id, sideKey);
 
                     return {
                         parameterId: Number(parameter.id),
@@ -232,7 +415,9 @@ $(function () {
         });
 
         return {
+            sessionId: sessionState.editSessionId,
             patientId: sessionState.isIncognito ? null : Number(sessionState.patient && sessionState.patient.id ? sessionState.patient.id : 0),
+            ultrasoundTypeId: $ultrasoundTypeSelect.length > 0 && $ultrasoundTypeSelect.val() !== '' ? Number($ultrasoundTypeSelect.val()) : null,
             isIncognito: sessionState.isIncognito,
             sessionNote: formElement.elements.session_note ? formElement.elements.session_note.value : '',
             sessionConclusion: formElement.elements.session_conclusion ? formElement.elements.session_conclusion.value : '',
@@ -279,7 +464,21 @@ $(function () {
         });
     }
 
+    function applyStoredFormValues($form) {
+        $form.find('input, select, textarea').each(function () {
+            const $field = $(this);
+            const fieldKey = $field.attr('name') || $field.attr('id');
+
+            if (!fieldKey || !Object.prototype.hasOwnProperty.call(sessionState.formValues, fieldKey)) {
+                return;
+            }
+
+            $field.val(sessionState.formValues[fieldKey] ?? '');
+        });
+    }
+
     function renderExaminationForm() {
+        persistCurrentFormValues();
         $examinationFormContent.empty();
         $imageSection.removeClass('focus-style');
 
@@ -397,7 +596,7 @@ $(function () {
         const $saveButton = $('<button>', {
             class: 'btn btn-primary',
             type: 'button',
-            text: 'Salvare formular',
+            text: isEditMode ? 'Actualizează formularul' : 'Salvare formular',
         });
 
         $saveButton.on('click', function () {
@@ -408,9 +607,241 @@ $(function () {
         $form.append($saveActions);
 
         $examinationFormContent.append($form);
+        applyStoredFormValues($form);
         $examinationForm.prop('hidden', false);
         $examinationForm.get(0).scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    function setIdnpMessage(text, state) {
+        $idnpMessage.text(text).removeClass('text-success text-danger text-secondary').addClass(state);
+    }
+
+    function setPatientNameMessage(text, state) {
+        $patientNameMessage.text(text).removeClass('text-success text-danger text-secondary').addClass(state);
+    }
+
+    function hidePatientNameResults() {
+        $patientNameResults.empty().prop('hidden', true);
+    }
+
+    function renderPatient(patient) {
+        patientFields.fullName.text(`${((patient.lastName || '') + ' ' + (patient.firstName || '')).trim() || '-'}`);
+        patientFields.gender.text(patient.gender || '-');
+        patientFields.birthYear.text(patient.birthYear || '-');
+        patientFields.phone.text(patient.phone || '-');
+        patientFields.idnp.text(patient.idnp || '-');
+        patientFields.seria.text(patient.seria || '-');
+        patientFields.district.text(patient.district || '-');
+        patientFields.city.text(patient.city || '-');
+        patientFields.address.text(patient.address || '-');
+        patientFields.beneficiary.text(patient.beneficiary || 'Nu');
+        $patientSummary.prop('hidden', false);
+    }
+
+    function getPatientFullName(patient) {
+        return `${patient.lastName || ''} ${patient.firstName || ''}`.trim();
+    }
+
+    function resetPatient(shouldFocusPatient = false) {
+        sessionState.patient = null;
+        $patientSummary.prop('hidden', true);
+        $addPatientLink.prop('hidden', true);
+        hidePatientNameResults();
+
+        $.each(patientFields, function (_, $field) {
+            $field.text('');
+        });
+
+        setOrgansDisabled(!hasPatientAccess());
+
+        if (!hasPatientAccess()) {
+            clearSelectedOrgans();
+
+            if (shouldFocusPatient) {
+                focusPatientSelection();
+            }
+        }
+
+        refreshOrganAvailability();
+        updateFormActions();
+    }
+
+    function selectPatient(patient, options = {}) {
+        const suppressTypeSync = options.suppressTypeSync === true;
+
+        sessionState.patient = patient;
+        $addPatientLink.prop('hidden', true);
+        $idnpInput.val(patient.idnp || '').removeClass('is-invalid').toggleClass('is-valid', Boolean(patient.idnp));
+        $patientNameInput.val(getPatientFullName(patient)).removeClass('is-invalid').addClass('is-valid');
+
+        setIdnpMessage('Pacient selectat.', 'text-success');
+        setPatientNameMessage('Pacient selectat.', 'text-success');
+        hidePatientNameResults();
+        renderPatient(patient);
+        setPatientFocusState(false);
+        setOrgansDisabled(false);
+        refreshOrganAvailability();
+
+        if (!suppressTypeSync && !sessionState.isHydratingInitialSession) {
+            $ultrasoundTypeSelect.trigger('change');
+        }
+
+        updateFormActions();
+    }
+
+    function renderPatientNameResults(patients) {
+        $patientNameResults.empty();
+
+        $.each(patients, function (_, patient) {
+            const $resultButton = $('<button>', {
+                class: 'list-group-item list-group-item-action patient-search-result',
+                type: 'button',
+            });
+
+            $('<strong>', {
+                text: getPatientFullName(patient) || '-',
+            }).appendTo($resultButton);
+
+            $('<small>', {
+                class: 'text-secondary',
+                text: [
+                    patient.idnp ? `IDNP: ${patient.idnp}` : null,
+                    patient.phone ? `Tel: ${patient.phone}` : null,
+                    patient.city || null,
+                ].filter(Boolean).join(' · '),
+            }).appendTo($resultButton);
+
+            $resultButton.on('click', function () {
+                selectPatient(patient);
+            });
+
+            $patientNameResults.append($resultButton);
+        });
+
+        $patientNameResults.prop('hidden', patients.length === 0);
+    }
+
+    function applyUltrasoundTypeSelection() {
+        if ($ultrasoundTypeSelect.length === 0) {
+            return;
+        }
+
+        persistCurrentFormValues();
+
+        let organIds = [];
+
+        try {
+            organIds = JSON.parse($ultrasoundTypeSelect.find('option:selected').attr('data-organ-ids') || '[]');
+        } catch (error) {
+            organIds = [];
+        }
+
+        setSelectedOrgansByIds(organIds.map((id) => id.toString()));
+
+        if (!$examinationForm.prop('hidden')) {
+            if (sessionState.selectedOrgans.size === 0) {
+                hideExaminationForm();
+            } else {
+                renderExaminationForm();
+            }
+        }
+    }
+
+    function buildFormValuesFromSession(sessionData) {
+        const values = {
+            session_note: sessionData && sessionData.sessionNote ? sessionData.sessionNote : '',
+            session_conclusion: sessionData && sessionData.sessionConclusion ? sessionData.sessionConclusion : '',
+        };
+        const sessionOrgans = sessionData && Array.isArray(sessionData.organs) ? sessionData.organs : [];
+
+        sessionOrgans.forEach(function (sessionOrgan) {
+            const organId = Number(sessionOrgan.organId || 0);
+            const sideKey = sessionOrgan.side && sessionOrgan.side !== 'single' ? sessionOrgan.side : null;
+
+            if (organId <= 0) {
+                return;
+            }
+
+            values[buildNoteFieldId(organId, sideKey)] = sessionOrgan.note || '';
+
+            if (!Array.isArray(sessionOrgan.parameters)) {
+                return;
+            }
+
+            sessionOrgan.parameters.forEach(function (parameter) {
+                const parameterId = Number(parameter.parameterId || 0);
+
+                if (parameterId <= 0) {
+                    return;
+                }
+
+                values[buildParameterFieldId(organId, parameterId, sideKey)] = parameter.value || '';
+            });
+        });
+
+        return values;
+    }
+
+    function hydrateInitialSession() {
+        if (!initialSessionData) {
+            renderSelectedOrgans();
+            refreshOrganAvailability();
+            updateFormActions();
+            return;
+        }
+
+        sessionState.isHydratingInitialSession = true;
+        sessionState.formValues = buildFormValuesFromSession(initialSessionData);
+
+        if ($ultrasoundTypeSelect.length > 0 && initialSessionData.ultrasoundTypeId) {
+            $ultrasoundTypeSelect.val(initialSessionData.ultrasoundTypeId.toString());
+        }
+
+        if (initialSessionData.isIncognito) {
+            $incognitoPatient.prop('checked', true);
+            sessionState.isIncognito = true;
+            setPatientFocusState(false);
+            setOrgansDisabled(false);
+        } else if (initialSessionData.patient) {
+            selectPatient(initialSessionData.patient, { suppressTypeSync: true });
+        }
+
+        setSelectedOrgansByIds(
+            Array.isArray(initialSessionData.selectedOrganIds)
+                ? initialSessionData.selectedOrganIds.map((id) => id.toString())
+                : []
+        );
+
+        sessionState.isHydratingInitialSession = false;
+
+        if (sessionState.selectedOrgans.size > 0) {
+            renderExaminationForm();
+        }
+    }
+
+    $incognitoPatient.on('change', function () {
+        const isChecked = $(this).is(':checked');
+        sessionState.isIncognito = isChecked;
+
+        if (isChecked) {
+            setPatientFocusState(false);
+            setOrgansDisabled(false);
+            refreshOrganAvailability();
+
+            if (!sessionState.isHydratingInitialSession) {
+                $ultrasoundTypeSelect.trigger('change');
+            }
+
+            updateFormActions();
+            return;
+        }
+
+        setPatientFocusState(true);
+        setStartButtonDisabled(true);
+        setOrgansDisabled(true);
+        clearSelectedOrgans();
+        updateFormActions();
+    });
 
     $showExaminationFormButton.on('click', function () {
         if (!hasPatientAccess() || sessionState.selectedOrgans.size === 0) {
@@ -424,346 +855,180 @@ $(function () {
         renderExaminationForm();
     });
 
-    $('[data-patient-search]').each(function () {
-        const $container = $(this);
-        const searchUrl = $container.data('patient-search-url');
-        const nameSearchUrl = $container.data('patient-name-search-url');
-        const newPatientUrl = $container.data('new-patient-url');
-        const $input = $container.find('[data-idnp-input]');
-        const $message = $container.find('[data-idnp-message]');
-        const $nameInput = $container.find('[data-patient-name-input]');
-        const $nameMessage = $container.find('[data-patient-name-message]');
-        const $nameResults = $container.find('[data-patient-name-results]');
-        const $addPatientLink = $container.find('[data-add-patient-link]');
-        const $summary = $container.find('[data-patient-summary]');
-        const fields = {
-            fullName: $container.find('[data-patient-field="fullName"]'),
-            gender: $container.find('[data-patient-field="gender"]'),
-            birthYear: $container.find('[data-patient-field="birthYear"]'),
-            phone: $container.find('[data-patient-field="phone"]'),
-            idnp: $container.find('[data-patient-field="idnp"]'),
-            seria: $container.find('[data-patient-field="seria"]'),
-            district: $container.find('[data-patient-field="district"]'),
-            city: $container.find('[data-patient-field="city"]'),
-            address: $container.find('[data-patient-field="address"]'),
-            beneficiary: $container.find('[data-patient-field="beneficiary"]'),
-        };
-        let requestId = 0;
-        let nameRequestId = 0;
-        let nameSearchTimer = null;
+    $idnpInput.on('input', function () {
+        const sanitizedIdnp = $idnpInput.val().replace(/\D/g, '').slice(0, 13);
+        const currentRequest = ++idnpRequestId;
 
-        function setMessage(text, state) {
-            $message.text(text).removeClass('text-success text-danger text-secondary').addClass(state);
+        $idnpInput.val(sanitizedIdnp);
+        resetPatient();
+        $idnpInput.removeClass('is-valid is-invalid');
+        $patientNameInput.val('').removeClass('is-valid is-invalid');
+        setPatientNameMessage('Introduceți cel puțin 2 caractere.', 'text-secondary');
+
+        if (sanitizedIdnp.length === 0) {
+            setIdnpMessage('Introduceți IDNP pentru căutare.', 'text-secondary');
+            return;
         }
 
-        function setNameMessage(text, state) {
-            if ($nameMessage.length === 0) {
+        if (sanitizedIdnp.length < 13) {
+            $idnpInput.addClass('is-invalid');
+            setIdnpMessage('IDNP trebuie să conțină exact 13 cifre.', 'text-danger');
+            return;
+        }
+
+        setIdnpMessage('Se caută pacientul...', 'text-secondary');
+
+        $.ajax({
+            url: patientSearchUrl,
+            method: 'GET',
+            dataType: 'json',
+            data: { idnp: sanitizedIdnp },
+        }).done(function (data) {
+            if (currentRequest !== idnpRequestId) {
                 return;
             }
 
-            $nameMessage.text(text).removeClass('text-success text-danger text-secondary').addClass(state);
-        }
+            if (!data.valid || !data.found) {
+                $idnpInput.addClass('is-invalid');
+                setIdnpMessage(data.message || 'Pacientul nu a fost găsit.', 'text-danger');
 
-        function hideNameResults() {
-            $nameResults.empty().prop('hidden', true);
-        }
-
-        function resetPatient(shouldFocusPatient = false) {
-            sessionState.patient = null;
-            $summary.prop('hidden', true);
-            $addPatientLink.prop('hidden', true);
-            hideNameResults();
-            $.each(fields, function (_, $field) {
-                $field.text('');
-            });
-            setOrgansDisabled(!hasPatientAccess());
-            if (!hasPatientAccess()) {
-                clearSelectedOrgans();
-                if (shouldFocusPatient) {
-                    focusPatientSelection();
+                if (data.valid) {
+                    $addPatientLink.attr('href', `${newPatientUrl}?idnp=${encodeURIComponent(sanitizedIdnp)}`).prop('hidden', false);
                 }
-            }
-            updateFormActions();
-        }
 
-        function renderPatient(patient) {
-            fields.fullName.text(`${((patient.lastName || '') + ' ' + (patient.firstName || '')).trim() || '-'}`);
-            fields.gender.text(patient.gender || '-');
-            fields.birthYear.text(patient.birthYear || '-');
-            fields.phone.text(patient.phone || '-');
-            fields.idnp.text(patient.idnp || '-');
-            fields.seria.text(patient.seria || '-');
-            fields.district.text(patient.district || '-');
-            fields.city.text(patient.city || '-');
-            fields.address.text(patient.address || '-');
-            fields.beneficiary.text(patient.beneficiary || 'Nu');
-            $summary.prop('hidden', false);
-        }
-
-        function getPatientFullName(patient) {
-            return `${patient.lastName || ''} ${patient.firstName || ''}`.trim();
-        }
-
-        function selectPatient(patient) {
-            sessionState.patient = patient;
-            $addPatientLink.prop('hidden', true);
-            $input.val(patient.idnp || '').removeClass('is-invalid');
-            $input.toggleClass('is-valid', Boolean(patient.idnp));
-
-            if ($nameInput.length > 0) {
-                $nameInput.val(getPatientFullName(patient)).removeClass('is-invalid').addClass('is-valid');
-            }
-
-            setMessage('Pacient selectat.', 'text-success');
-            setNameMessage('Pacient selectat.', 'text-success');
-            hideNameResults();
-            renderPatient(patient);
-            updateFormActions();
-            setPatientFocusState(false);
-            setOrgansDisabled(false);
-        }
-
-        function renderNameResults(patients) {
-            $nameResults.empty();
-
-            $.each(patients, function (_, patient) {
-                const $resultButton = $('<button>', {
-                    class: 'list-group-item list-group-item-action patient-search-result',
-                    type: 'button',
-                });
-
-                $('<strong>', {
-                    text: getPatientFullName(patient) || '-',
-                }).appendTo($resultButton);
-
-                $('<small>', {
-                    class: 'text-secondary',
-                    text: [
-                        patient.idnp ? `IDNP: ${patient.idnp}` : null,
-                        patient.phone ? `Tel: ${patient.phone}` : null,
-                        patient.city || null,
-                    ].filter(Boolean).join(' · '),
-                }).appendTo($resultButton);
-
-                $resultButton.on('click', function () {
-                    selectPatient(patient);
-                });
-
-                $nameResults.append($resultButton);
-            });
-
-            $nameResults.prop('hidden', patients.length === 0);
-        }
-
-        $input.on('input', function () {
-            const sanitizedIdnp = $input.val().replace(/\D/g, '').slice(0, 13);
-            const currentRequest = ++requestId;
-
-            $input.val(sanitizedIdnp);
-            resetPatient();
-            $input.removeClass('is-valid is-invalid');
-
-            if ($nameInput.length > 0) {
-                $nameInput.val('').removeClass('is-valid is-invalid');
-                setNameMessage('Introduceți cel puțin 2 caractere.', 'text-secondary');
-            }
-
-            if (sanitizedIdnp.length === 0) {
-                setMessage('Introduceți IDNP pentru căutare.', 'text-secondary');
                 return;
             }
 
-            if (sanitizedIdnp.length < 13) {
-                $input.addClass('is-invalid');
-                setMessage('IDNP trebuie să conțină exact 13 cifre.', 'text-danger');
+            $idnpInput.addClass('is-valid');
+            setIdnpMessage(data.message || 'Pacient găsit.', 'text-success');
+            selectPatient(data.patient);
+        }).fail(function () {
+            if (currentRequest !== idnpRequestId) {
                 return;
             }
 
-            setMessage('Se caută pacientul...', 'text-secondary');
+            $idnpInput.addClass('is-invalid');
+            setIdnpMessage('Căutarea pacientului a eșuat.', 'text-danger');
+        });
+    });
 
+    $patientNameInput.on('input', function () {
+        const query = $.trim($patientNameInput.val());
+        const currentRequest = ++patientNameRequestId;
+
+        window.clearTimeout(patientNameSearchTimer);
+        resetPatient(query.length === 0);
+        $idnpInput.val('').removeClass('is-valid is-invalid');
+        $patientNameInput.removeClass('is-valid is-invalid');
+        setIdnpMessage('Introduceți IDNP pentru căutare.', 'text-secondary');
+
+        if (query.length === 0) {
+            setPatientNameMessage('Introduceți cel puțin 2 caractere.', 'text-secondary');
+            return;
+        }
+
+        if (query.length < 2) {
+            $patientNameInput.addClass('is-invalid');
+            setPatientNameMessage('Introduceți cel puțin 2 caractere.', 'text-danger');
+            return;
+        }
+
+        setPatientNameMessage('Se caută pacienți...', 'text-secondary');
+
+        patientNameSearchTimer = window.setTimeout(function () {
             $.ajax({
-                url: searchUrl,
+                url: patientNameSearchUrl,
                 method: 'GET',
                 dataType: 'json',
-                data: { idnp: sanitizedIdnp },
+                data: { q: query },
             }).done(function (data) {
-                if (currentRequest !== requestId) {
+                if (currentRequest !== patientNameRequestId) {
                     return;
                 }
 
-                if (!data.valid || !data.found) {
-                    $input.addClass('is-invalid');
-                    setMessage(data.message || 'Pacientul nu a fost găsit.', 'text-danger');
+                const patients = Array.isArray(data.patients) ? data.patients : [];
 
-                    if (data.valid) {
-                        $addPatientLink.attr('href', `${newPatientUrl}?idnp=${encodeURIComponent(sanitizedIdnp)}`).prop('hidden', false);
-                    }
-
+                if (patients.length === 0) {
+                    $patientNameInput.addClass('is-invalid');
+                    setPatientNameMessage('Nu au fost găsiți pacienți.', 'text-danger');
+                    hidePatientNameResults();
+                    $addPatientLink.attr('href', newPatientUrl).prop('hidden', false);
                     return;
                 }
 
-                $input.addClass('is-valid');
-                setMessage(data.message || 'Pacient găsit.', 'text-success');
-                selectPatient(data.patient);
+                $patientNameInput.removeClass('is-invalid');
+                setPatientNameMessage(`${patients.length} pacienți găsiți. Alegeți pacientul.`, 'text-success');
+                renderPatientNameResults(patients);
             }).fail(function () {
-                if (currentRequest !== requestId) {
+                if (currentRequest !== patientNameRequestId) {
                     return;
                 }
 
-                $input.addClass('is-invalid');
-                setMessage('Căutarea pacientului a eșuat.', 'text-danger');
+                $patientNameInput.addClass('is-invalid');
+                setPatientNameMessage('Căutarea pacientului a eșuat.', 'text-danger');
+                hidePatientNameResults();
             });
-        });
+        }, 220);
+    });
 
-        if ($nameInput.length > 0 && nameSearchUrl) {
-            function handleEmptyNameSearch() {
-                if ($.trim($nameInput.val()) !== '') {
-                    return;
-                }
+    $patientNameInput.on('search change', function () {
+        if ($.trim($patientNameInput.val()) !== '') {
+            return;
+        }
 
-                nameRequestId += 1;
-                window.clearTimeout(nameSearchTimer);
-                resetPatient(true);
-                $input.val('').removeClass('is-valid is-invalid');
-                setMessage('Introduceți IDNP pentru căutare.', 'text-secondary');
-                $nameInput.removeClass('is-valid is-invalid');
-                setNameMessage('Introduceți cel puțin 2 caractere.', 'text-secondary');
+        patientNameRequestId += 1;
+        window.clearTimeout(patientNameSearchTimer);
+        resetPatient(true);
+        $idnpInput.val('').removeClass('is-valid is-invalid');
+        $patientNameInput.removeClass('is-valid is-invalid');
+        setIdnpMessage('Introduceți IDNP pentru căutare.', 'text-secondary');
+        setPatientNameMessage('Introduceți cel puțin 2 caractere.', 'text-secondary');
+    });
+
+    $organCards.on('click', function () {
+        if (!hasPatientAccess()) {
+            focusPatientSelection();
+            setOrgansDisabled(true);
+            clearSelectedOrgans();
+            updateFormActions();
+            return;
+        }
+
+        const $card = $(this);
+
+        if ($card.hasClass('is-gender-disabled') || $card.prop('disabled')) {
+            return;
+        }
+
+        persistCurrentFormValues();
+
+        const organState = createOrganStateFromCard($card);
+        const active = $card.toggleClass('is-active').hasClass('is-active');
+
+        $card.attr('aria-pressed', active ? 'true' : 'false');
+
+        if (active) {
+            sessionState.selectedOrgans.set(organState.id, organState);
+        } else {
+            sessionState.selectedOrgans.delete(organState.id);
+        }
+
+        renderSelectedOrgans();
+        updateFormActions();
+
+        if (!$examinationForm.prop('hidden')) {
+            if (sessionState.selectedOrgans.size === 0) {
+                hideExaminationForm();
+            } else {
+                renderExaminationForm();
             }
-
-            $nameInput.on('input', function () {
-                const query = $.trim($nameInput.val());
-                const currentRequest = ++nameRequestId;
-
-                window.clearTimeout(nameSearchTimer);
-                resetPatient(query.length === 0);
-                $input.val('').removeClass('is-valid is-invalid');
-                setMessage('Introduceți IDNP pentru căutare.', 'text-secondary');
-                $nameInput.removeClass('is-valid is-invalid');
-
-                if (query.length === 0) {
-                    setNameMessage('Introduceți cel puțin 2 caractere.', 'text-secondary');
-                    return;
-                }
-
-                if (query.length < 2) {
-                    $nameInput.addClass('is-invalid');
-                    setNameMessage('Introduceți cel puțin 2 caractere.', 'text-danger');
-                    return;
-                }
-
-                setNameMessage('Se caută pacienți...', 'text-secondary');
-
-                nameSearchTimer = window.setTimeout(function () {
-                    $.ajax({
-                        url: nameSearchUrl,
-                        method: 'GET',
-                        dataType: 'json',
-                        data: { q: query },
-                    }).done(function (data) {
-                        if (currentRequest !== nameRequestId) {
-                            return;
-                        }
-
-                        const patients = Array.isArray(data.patients) ? data.patients : [];
-
-                        if (patients.length === 0) {
-                            $nameInput.addClass('is-invalid');
-                            setNameMessage('Nu au fost găsiți pacienți.', 'text-danger');
-                            hideNameResults();
-                            $addPatientLink.attr('href', newPatientUrl).prop('hidden', false);
-                            return;
-                        }
-
-                        $nameInput.removeClass('is-invalid');
-                        setNameMessage(`${patients.length} pacienți găsiți. Alegeți pacientul.`, 'text-success');
-                        renderNameResults(patients);
-                    }).fail(function () {
-                        if (currentRequest !== nameRequestId) {
-                            return;
-                        }
-
-                        $nameInput.addClass('is-invalid');
-                        setNameMessage('Căutarea pacientului a eșuat.', 'text-danger');
-                        hideNameResults();
-                    });
-                }, 220);
-            });
-
-            $nameInput.on('search change', handleEmptyNameSearch);
         }
     });
 
-    $('[data-organ-grid]').each(function () {
-        const $grid = $(this);
-        const $cards = $grid.find('[data-organ-card]');
-        const $selectedContainer = $('[data-selected-organs]');
-        const $selectedCount = $('[data-selected-count]');
-
-        function renderSelected() {
-            $selectedContainer.empty();
-            $selectedCount.text(sessionState.selectedOrgans.size.toString());
-
-            if (sessionState.selectedOrgans.size === 0) {
-                $('<span>', {
-                    class: 'text-secondary',
-                    text: 'Niciun organ selectat.',
-                }).appendTo($selectedContainer);
-                return;
-            }
-
-            sessionState.selectedOrgans.forEach(function (organ) {
-                $('<span>', {
-                    class: 'badge text-bg-primary',
-                    text: organ.name,
-                }).appendTo($selectedContainer);
-            });
-        }
-
-        $cards.on('click', function () {
-            if (!hasPatientAccess()) {
-                focusPatientSelection();
-                setOrgansDisabled(true);
-                clearSelectedOrgans();
-                updateFormActions();
-                return;
-            }
-
-            const $card = $(this);
-            const id = $card.data('organ-id').toString();
-            let parameters = [];
-
-            try {
-                parameters = JSON.parse($card.attr('data-organ-parameters') || '[]');
-            } catch (error) {
-                parameters = [];
-            }
-
-            const active = $card.toggleClass('is-active').hasClass('is-active');
-            $card.attr('aria-pressed', active ? 'true' : 'false');
-
-            if (active) {
-                sessionState.selectedOrgans.set(id, {
-                    id,
-                    name: $card.data('organ-name'),
-                    paired: $card.data('organ-paired').toString() === '1',
-                    imagePath: $card.data('organ-image-path'),
-                    parameters,
-                });
-            } else {
-                sessionState.selectedOrgans.delete(id);
-            }
-
-            renderSelected();
-            updateFormActions();
-
-            if (!$examinationForm.prop('hidden')) {
-                renderExaminationForm();
-            }
-        });
-
-        renderSelected();
-        updateFormActions();
+    $ultrasoundTypeSelect.on('change', function () {
+        applyUltrasoundTypeSelection();
     });
 
     updateInitialState();
+    hydrateInitialSession();
 });

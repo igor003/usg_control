@@ -124,6 +124,21 @@
     box-shadow: 0 0 0 .16rem rgba(var(--bs-primary-rgb), .18);
 }
 
+.organ-card.is-gender-disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    filter: grayscale(100%);
+    box-shadow: none;
+    transform: none;
+}
+
+.organ-card.is-gender-disabled:hover,
+.organ-card.is-gender-disabled:focus {
+    border-color: var(--bs-border-color);
+    box-shadow: none;
+    transform: none;
+}
+
 .organ-image,
 .organ-placeholder {
     width: 100%;

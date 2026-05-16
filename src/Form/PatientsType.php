@@ -54,7 +54,7 @@ class PatientsType extends AbstractType
                 'empty_data' => null,
                 'attr' => [
                     'min' => 1900,
-                    'max' => 2026,
+                    'max' => (int) (new \DateTimeImmutable())->format('Y'),
                     'placeholder' => 'ex. 1985',
                 ],
             ])
@@ -100,7 +100,7 @@ class PatientsType extends AbstractType
                 ],
             ])
             ->add('beneficiary', CheckboxType::class, [
-                'label' => 'Pacient cu inlesniri',
+                'label' => 'Pacient Asigurat',
                 'required' => false,
             ])
             ->add('save', SubmitType::class, [
